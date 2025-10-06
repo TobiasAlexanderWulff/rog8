@@ -21,5 +21,11 @@ Specs live in `src/**/__tests__/` mirroring module paths (`src/world/__tests__/m
 ## Planning & Scope Management
 If a task widens, split it, capture sub-plans, and reflect scope changes in `docs/ROADMAP.md`. Draft implementation outlines in `docs/plans/` before major features so plan, roadmap, and code stay aligned.
 
+## Issue Tracking & Automation
+- Use GitHub Issues as the canonical task tracker. Reference plan sections when opening tickets and keep titles scoped (e.g., `Phase1: Canvas setup`).
+- Prefer running `node scripts/create-phase1-issues.js` to sync deliverables from `docs/plans/phase-1-mvp-plan.md`. Start with `--dry-run`, then re-run without the flag once labels/milestones are set.
+- Ensure the `phase-1` label exists before automation; add extra labels or milestones via CLI flags (`--label`, `--milestone`).
+- After automation, verify duplicates using `gh issue list` and close any accidental repeats with a comment pointing to the primary issue.
+
 ## Commit & Pull Request Guidelines
 With no history yet, adopt Conventional Commits (`feat: add roguelike map generator`). Keep commits scoped to one system or bug fix. Pull requests need a concise summary, screenshots or GIFs for visual tweaks, reproduction steps for bug fixes, checked playtest seeds, and links to any roadmap or plan documents touched.
