@@ -1,0 +1,35 @@
+# Dependency directories
+node_modules/
+
+# Build outputs
+/dist/
+/build/
+
+# Generated assets
+/src/assets/generated/
+/src/assets/tmp/
+
+# Logs and diagnostics
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Environment files
+.env*
+!.env.example
+
+# Editor and tooling metadata
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
