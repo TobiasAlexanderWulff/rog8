@@ -106,10 +106,10 @@
 - Deterministic restart may fail if any subsystem caches non-seeded state (e.g., audio randomization); conduct cross-system review before sign-off.
 - Procedural asset generation could impact startup time; profile and cache results in memory to avoid frame drops.
 
-## Open Questions
-- What exact base resolution should the canvas target (e.g., 160×144 vs 256×144)?
-- Should the seed originate from user input, randomised per run, or fixed for MVP testing?
-- Are placeholder assets (fonts, UI icons) acceptable in Phase 1, or must everything be procedurally generated?
+## Open Questions (Resolved)
+- Base resolution: Target `256×144` to preserve a 16×16 tile grid while filling modern 16:9 displays; monitor performance/readability and revisit if needed.
+- Seed source: Generate a random seed each run, surface it in the HUD or debug overlay, and ensure restart reuses it until Phase 2 introduces full seed input UX.
+- Placeholder assets: Keep procedural generation for core sprites (player/enemies) but permit temporary static UI assets (fonts/icons) tracked for replacement in Phase 2.
 
 ## Next Steps
 - Finalise outstanding decisions in Open Questions with stakeholders.
