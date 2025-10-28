@@ -186,7 +186,72 @@ describe('createRenderLoop', () => {
   });
 
   it('resets loop state on stop', () => {
-    // TODO: Assert loop cleanup behaviour once timers can be controlled.
+    const rafQueue: Array<{ id: number; callback: FrameRequestCallback }> = [];
+    let nextRafId = 1;
+
+    const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      const id = nextRafId++;
+      rafQueue.push({ id, callback });
+      return id;
+    });
+
+    const cancelSpy = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => {
+      const index = rafQueue.findIndex((entry) => entry.id === id);
+      if (index >= 0) {
+        rafQueue.splice(index, 1);
+      }
+    });
+
+    const dispatchFrame = (timestamp: number): void => {
+      if (rafQueue.length === 0) {
+        throw new Error('No scheduled animation frame to dispatch');
+      }
+      const { callback } = rafQueue.shift() as { id: number; callback: FrameRequestCallback };
+      callback(timestamp);
+    };
+
+    const tickSpy = vi.fn();
+    const loop = createRenderLoop({} as RenderContext, tickSpy);
+
+    loop.start();
+    expect(rafQueue.length).toBe(1);
+
+    dispatchFrame(0);
+    dispatchFrame(17);
+    dispatchFrame(34);
+    const framesBeforeStop = tickSpy.mock.calls.map((call): number => {
+      const [frame] = call as [number];
+      return frame;
+    });
+    expect(framesBeforeStop.length).toBeGreaterThan(1);
+    expect(framesBeforeStop.at(-1)).toBeGreaterThan(0);
+
+    loop.stop();
+    expect(cancelSpy).toHaveBeenCalledTimes(1);
+    expect(rafQueue.length).toBe(0);
+
+    tickSpy.mockClear();
+
+    loop.start();
+    expect(rafQueue.length).toBe(1);
+
+    dispatchFrame(0);
+    expect(tickSpy).toHaveBeenCalledTimes(1);
+    expect(tickSpy).toHaveBeenLastCalledWith(0);
+
+    dispatchFrame(17);
+    const framesAfterRestart = tickSpy.mock.calls.map((call): number => {
+      const [frame] = call as [number];
+      return frame;
+    });
+    expect(framesAfterRestart).toEqual([0, 1]);
+
+    loop.stop();
+    expect(cancelSpy).toHaveBeenCalledTimes(2);
+    expect(rafQueue.length).toBe(0);
+
+    rafSpy.mockRestore();
+    cancelSpy.mockRestore();
   });
 });
 
