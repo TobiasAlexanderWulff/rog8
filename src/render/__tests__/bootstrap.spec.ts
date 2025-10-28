@@ -69,7 +69,51 @@ describe('bootstrapCanvas', () => {
   });
 
   it('calculates integer scaling based on available viewport size', () => {
-    // TODO: Simulate resize events and assert scale updates once DOM mocking is available.
+    document.body.innerHTML = '<div id="game-root"></div>';
+
+    const root = document.getElementById('game-root');
+    if (!(root instanceof HTMLDivElement)) {
+      throw new Error('Expected to find render root container');
+    }
+
+    const contextStub = { imageSmoothingEnabled: true } as unknown as CanvasRenderingContext2D;
+    const computedStyle = document.createElement('div').style;
+    computedStyle.display = 'block';
+    computedStyle.alignItems = 'normal';
+    computedStyle.justifyContent = 'flex-start';
+    computedStyle.width = 'auto';
+    computedStyle.height = 'auto';
+
+    vi.spyOn(window, 'getComputedStyle').mockReturnValue(computedStyle);
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(contextStub);
+
+    const widthSpy = vi.spyOn(root, 'clientWidth', 'get').mockReturnValue(512);
+    const heightSpy = vi.spyOn(root, 'clientHeight', 'get').mockReturnValue(288);
+
+    const renderContext = bootstrapCanvas('game-root');
+    const { canvas } = renderContext;
+
+    expect(renderContext.scale).toBe(2);
+    expect(canvas.style.width).toBe('512px');
+    expect(canvas.style.height).toBe('288px');
+
+    widthSpy.mockReturnValue(768);
+    heightSpy.mockReturnValue(432);
+    window.dispatchEvent(new Event('resize'));
+
+    expect(renderContext.scale).toBe(3);
+    expect(canvas.style.width).toBe('768px');
+    expect(canvas.style.height).toBe('432px');
+
+    widthSpy.mockReturnValue(128);
+    heightSpy.mockReturnValue(72);
+    window.dispatchEvent(new Event('resize'));
+
+    expect(renderContext.scale).toBe(1);
+    expect(canvas.style.width).toBe('256px');
+    expect(canvas.style.height).toBe('144px');
+
+    renderContext.teardown();
   });
 });
 
