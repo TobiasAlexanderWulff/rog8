@@ -5,8 +5,8 @@
 
 ## Workflow
 - Start every major initiative with a scoped plan that captures goals, constraints, dependencies, and validation steps.
-- Cross-link the relevant entries in `../ROADMAP.md` and affected docs so maintainers can trace decisions.
-- Mark outstanding questions or risks explicitly and flag owners or follow-up tasks when known.
+- Cross-link the relevant entries in `../ROADMAP.md` and affected docs so your future self can trace decisions quickly.
+- Mark outstanding questions or risks explicitly and note owners or follow-up tasks (even if that's just you) when known.
 
 ## Formatting & Hygiene
 - Use Markdown with clear headings (`Summary`, `Risks`, `Open Questions`, `Next Steps`).

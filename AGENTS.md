@@ -16,16 +16,16 @@ Bump `package.json` with Semantic Versioning for every shipped change and tag re
 Every directory guiding autonomous work must own an `AGENTS.md` that explains local expectations; update them alongside structural changes and cross-link root guidance when useful.
 
 ## Testing Guidelines
-Specs live in `src/**/__tests__/` mirroring module paths (`src/world/__tests__/mapgen.spec.ts`). Because of the known agent deadlock bug, do not run the suite yourself; request a maintainer to execute `pnpm test` (or `--watch`) and report results. Continue writing deterministic tests with seeded fixtures and note intentional gaps in the file header.
+Specs live in `src/**/__tests__/` mirroring module paths (`src/world/__tests__/mapgen.spec.ts`). The automation harness still has a deadlock bug, so run `pnpm test` only when you actively need results and record any flaky behaviour alongside TODOs. Continue writing deterministic tests with seeded fixtures and note intentional gaps in the file header.
 
 ## Planning & Scope Management
 If a task widens, split it, capture sub-plans, and reflect scope changes in `docs/ROADMAP.md`. Draft implementation outlines in `docs/plans/` before major features so plan, roadmap, and code stay aligned.
 
 ## Issue Tracking & Automation
-- Use GitHub Issues as the canonical task tracker. Reference plan sections when opening tickets and keep titles scoped (e.g., `Phase1: Canvas setup`).
-- Prefer running `node scripts/create-phase1-issues.js` to sync deliverables from `docs/plans/phase-1-mvp-plan.md`. Start with `--dry-run`, then re-run without the flag once labels/milestones are set.
-- Ensure the `phase-1` label exists before automation; add extra labels or milestones via CLI flags (`--label`, `--milestone`).
-- After automation, verify duplicates using `gh issue list` and close any accidental repeats with a comment pointing to the primary issue.
+- Use GitHub Issues when it helps you stay organised—reference plan sections in titles (`Phase1: Canvas setup`) to keep the backlog tidy.
+- The helper script `node scripts/create-phase1-issues.js` can scaffold tasks from `docs/plans/phase-1-mvp-plan.md`; run it with `--dry-run` first so you can review output before creating real issues.
+- Keep labels lightweight (`phase-1` is enough for now) and skip milestone setup unless you decide to schedule releases.
+- When the script creates duplicate issues, close extras with a quick note to yourself that points to the primary ticket.
 
 ## Commit & Pull Request Guidelines
-With no history yet, adopt Conventional Commits (`feat: add roguelike map generator`). Keep commits scoped to one system or bug fix. Pull requests need a concise summary, screenshots or GIFs for visual tweaks, reproduction steps for bug fixes, checked playtest seeds, and links to any roadmap or plan documents touched.
+Stick to Conventional Commits (`feat: add roguelike map generator`) and keep each commit focused on one system or bug fix. When you open a PR or push to a hosted remote, include a concise summary, attach screenshots or GIFs for visual tweaks, and note playtest seeds plus any doc sections you updated.

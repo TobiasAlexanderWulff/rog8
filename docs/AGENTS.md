@@ -14,4 +14,4 @@ This directory stores enduring reference material for the project, including the
 - Verify that any auxiliary assets referenced here live under `src/assets/` or another tracked location specified in the root guidance.
 
 ## Escalation
-If documentation expectations expand beyond this directory, sync with maintainers and propagate matching guidance to each affected `AGENTS.md`.
+If documentation expectations expand beyond this directory, update the root `AGENTS.md` and propagate matching guidance to each affected `AGENTS.md` so future-you has a single source of truth.

@@ -33,7 +33,7 @@ pnpm install
 - `pnpm preview` – serve the built bundle locally for smoke tests
 - `pnpm lint` – run ESLint/Prettier checks (required after procedural changes)
 
-> ℹ️ **Testing:** Because of an outstanding agent deadlock bug, contributors should request a maintainer to run `pnpm test` or `pnpm test --watch` instead of executing the suite locally.
+> ℹ️ **Testing:** There is a known agent deadlock bug in the harness—run `pnpm test` manually only when you need verification, and jot down any flaky behaviour for follow-up.
 
 ## Project Layout
 ```
@@ -70,9 +70,9 @@ Phase 1 targets a playable minimal run: canvas setup, deterministic RNG, procedu
 - Keep systems pure to preserve deterministic seeds; thread RNG through dependency injection
 - Follow Conventional Commits (`feat: add roguelike map generator`) and scope each commit to a single system or bug fix
 - Before major features, draft an outline in `docs/plans/` and reflect scope changes in `docs/ROADMAP.md`
-- When opening tasks, prefer `scripts/create-phase1-issues.js` to sync tracker entries; run with `--dry-run` first
+- When you want to track TODOs, feel free to use `scripts/create-phase1-issues.js` to sync entries; start with `--dry-run` to sanity-check output
 
 ## Support & Next Steps
-If you need the test suite executed, platform deployment checked, or issue automation run without sandbox restrictions, ping a maintainer. For visual updates, capture GIFs or screenshots alongside reproduction steps and link any touched plan or roadmap sections in your PR.
+If you need the test suite executed, platform deployment checked, or issue automation run without sandbox restrictions, just note the task in `docs/ROADMAP.md` or open a personal GitHub issue via the helper script. For visual updates, capture GIFs or screenshots for your own records and reference any touched plan or roadmap sections in commit messages.
 
 Happy hacking—and don’t forget to note the seed of your favourite runs!
