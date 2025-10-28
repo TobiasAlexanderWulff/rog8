@@ -7,11 +7,7 @@ export interface CollisionResult {
   // TODO: Add additional data such as penetration depth or slide vector.
 }
 
-export function checkCollision(
-  map: MapGrid,
-  x: number,
-  y: number,
-): CollisionResult {
+export function checkCollision(map: MapGrid, x: number, y: number): CollisionResult {
   // TODO: Inspect map tiles and determine if the position is walkable.
   void map;
   void x;

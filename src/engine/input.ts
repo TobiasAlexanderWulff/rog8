@@ -1,6 +1,16 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-export type KeyBinding = 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight' | 'KeyW' | 'KeyA' | 'KeyS' | 'KeyD' | 'Space' | 'KeyR';
+export type KeyBinding =
+  | 'ArrowUp'
+  | 'ArrowDown'
+  | 'ArrowLeft'
+  | 'ArrowRight'
+  | 'KeyW'
+  | 'KeyA'
+  | 'KeyS'
+  | 'KeyD'
+  | 'Space'
+  | 'KeyR';
 
 export interface FrameInputState {
   pressed: Set<KeyBinding>;
