@@ -1,0 +1,43 @@
+{
+  "name": "rog8",
+  "version": "0.1.0",
+  "description": "Deterministic roguelike prototype built with Vite and TypeScript.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint \"src/**/*.ts\" \"vite.config.ts\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "keywords": [
+    "roguelike",
+    "ecs",
+    "vite",
+    "typescript"
+  ],
+  "author": "Tobias Wulff",
+  "license": "MIT",
+  "packageManager": "pnpm@10.19.0",
+  "engines": {
+    "node": ">=18.20.0",
+    "pnpm": ">=10.19.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.14.0",
+    "@types/node": "^22.8.6",
+    "eslint": "^9.14.0",
+    "eslint-config-prettier": "^9.1.0",
+    "globals": "^15.12.0",
+    "jsdom": "^24.1.3",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.12.1",
+    "vite": "^5.4.10",
+    "vitest": "^2.1.3"
+  }
+}
