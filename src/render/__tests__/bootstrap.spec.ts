@@ -13,7 +13,7 @@ import {
 import { withSeed, type RunSeed } from '../../shared/random';
 
 /**
- * Placeholder suite for bootstrapCanvas until DOM harness is configured.
+ * Suite for bootstrapCanvas.
  */
 describe('bootstrapCanvas', () => {
   afterEach(() => {
@@ -25,6 +25,7 @@ describe('bootstrapCanvas', () => {
     document.body.innerHTML = '';
 
     const contextStub = { imageSmoothingEnabled: true } as unknown as CanvasRenderingContext2D;
+    // Simulate the minimal subset of layout properties the bootstrapper reads from the host node.
     const computedStyle = document.createElement('div').style;
     computedStyle.display = 'block';
     computedStyle.alignItems = 'normal';
@@ -83,6 +84,7 @@ describe('bootstrapCanvas', () => {
     }
 
     const contextStub = { imageSmoothingEnabled: true } as unknown as CanvasRenderingContext2D;
+    // Reuse the synthetic computed style so resizing math sees predictable values.
     const computedStyle = document.createElement('div').style;
     computedStyle.display = 'block';
     computedStyle.alignItems = 'normal';
@@ -124,19 +126,21 @@ describe('bootstrapCanvas', () => {
 });
 
 /**
- * Placeholder suite for createRenderLoop.
+ * Suite for createRenderLoop.
  */
 describe('createRenderLoop', () => {
   it('steps the tick callback at a fixed interval', () => {
     const rafQueue: Array<{ id: number; callback: FrameRequestCallback }> = [];
     let nextRafId = 1;
 
+    // Stub requestAnimationFrame to capture callbacks instead of scheduling real browser frames.
     const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
       const id = nextRafId++;
       rafQueue.push({ id, callback });
       return id;
     });
 
+    // Provide a cancelAnimationFrame implementation that removes entries from the queue.
     const cancelSpy = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => {
       const index = rafQueue.findIndex((entry) => entry.id === id);
       if (index >= 0) {
@@ -144,6 +148,7 @@ describe('createRenderLoop', () => {
       }
     });
 
+    // Advance the loop manually by invoking the next queued animation frame.
     const dispatchFrame = (timestamp: number): void => {
       if (rafQueue.length === 0) {
         throw new Error('No scheduled animation frame to dispatch');
@@ -190,12 +195,14 @@ describe('createRenderLoop', () => {
     const rafQueue: Array<{ id: number; callback: FrameRequestCallback }> = [];
     let nextRafId = 1;
 
+    // Capture frame callbacks so the test controls loop progression explicitly.
     const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
       const id = nextRafId++;
       rafQueue.push({ id, callback });
       return id;
     });
 
+    // Mirror cancelAnimationFrame behaviour to ensure stop clears pending callbacks.
     const cancelSpy = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => {
       const index = rafQueue.findIndex((entry) => entry.id === id);
       if (index >= 0) {
@@ -203,6 +210,7 @@ describe('createRenderLoop', () => {
       }
     });
 
+    // Helper that dispatches the next queued frame with a supplied timestamp.
     const dispatchFrame = (timestamp: number): void => {
       if (rafQueue.length === 0) {
         throw new Error('No scheduled animation frame to dispatch');
@@ -300,6 +308,7 @@ describe('drawPlaceholderScene', () => {
     expect(fillRectCalls).toHaveLength(13);
     expect(fillRectCalls[0].args).toEqual([0, 0, width, height]);
 
+    // Regenerate the random geometry with the same seed to build the authoritative expectations.
     const expectedShapes = withSeed(seed.value, (rng) => {
       const palette = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#a855f7'];
       const cellsX = Math.floor(width / cellSize);
@@ -393,14 +402,32 @@ type CanvasPropertyCall = {
 
 type CanvasCall = CanvasMethodCall | CanvasPropertyCall;
 
+/**
+ * Reports whether a captured canvas call originated from a method invocation.
+ *
+ * @param {CanvasCall} call - Call record captured from the spy context.
+ * @returns {boolean} True when the call corresponds to a canvas method.
+ */
 function isMethodCall(call: CanvasCall): call is CanvasMethodCall {
   return call.kind === 'method';
 }
 
+/**
+ * Reports whether a captured canvas call originated from a property assignment.
+ *
+ * @param {CanvasCall} call - Call record captured from the spy context.
+ * @returns {boolean} True when the call corresponds to a canvas property write.
+ */
 function isPropertyCall(call: CanvasCall): call is CanvasPropertyCall {
   return call.kind === 'property';
 }
 
+/**
+ * Creates a spy canvas rendering context that records invoked methods and property mutations.
+ *
+ * @returns {{ context: CanvasRenderingContext2D, calls: CanvasCall[] }} Spy context and captured
+ * call history.
+ */
 function createCanvasContextSpy(): { context: CanvasRenderingContext2D; calls: CanvasCall[] } {
   const calls: CanvasCall[] = [];
   const context = {} as CanvasRenderingContext2D;
