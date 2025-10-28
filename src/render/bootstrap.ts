@@ -55,13 +55,16 @@ export function bootstrapCanvas(rootId = 'app'): RenderContext {
     if (root instanceof HTMLElement && root !== document.body) {
       const computed = window.getComputedStyle(root);
 
+      // Promote the host container to a flex layout when it is still in the browser defaults.
       if (!root.style.display.trim() && computed.display === 'block') {
         root.style.display = 'flex';
       }
+      // Center the canvas vertically as long as the container has no explicit alignment rules.
       const alignDefault = computed.alignItems === 'normal' || computed.alignItems === 'stretch';
       if (!root.style.alignItems.trim() && alignDefault) {
         root.style.alignItems = 'center';
       }
+      // Mirror the vertical centering logic horizontally to keep the canvas centered in both axes.
       const justifyDefault =
         computed.justifyContent === 'normal' ||
         computed.justifyContent === 'flex-start' ||
@@ -69,6 +72,7 @@ export function bootstrapCanvas(rootId = 'app'): RenderContext {
       if (!root.style.justifyContent.trim() && justifyDefault) {
         root.style.justifyContent = 'center';
       }
+      // Expand the container to the viewport when it otherwise collapses to 0×0 dimensions.
       if (!root.style.width.trim() && (computed.width === 'auto' || computed.width === '0px')) {
         root.style.width = '100vw';
       }
@@ -81,6 +85,7 @@ export function bootstrapCanvas(rootId = 'app'): RenderContext {
   canvas.width = VIRTUAL_WIDTH;
   canvas.height = VIRTUAL_HEIGHT;
   canvas.style.display = 'block';
+  // Enforce crisp nearest-neighbour sampling so the upscaled pixels stay sharp.
   canvas.style.imageRendering = 'pixelated';
 
   // Compute an integer scale that maintains the aspect ratio within the available space.
@@ -100,8 +105,10 @@ export function bootstrapCanvas(rootId = 'app'): RenderContext {
   if (!context) {
     throw new Error('CanvasRenderingContext2D not supported');
   }
+  // Disable smoothing so scaled sprites render using hard edges.
   context.imageSmoothingEnabled = false;
 
+  // Defer cleanup work until callers explicitly tear down the render context.
   const teardownCallbacks: Array<() => void> = [];
   let tornDown = false;
   const teardown = (): void => {
@@ -141,7 +148,7 @@ export function bootstrapCanvas(rootId = 'app'): RenderContext {
     renderContext.scale = scale;
   };
 
-  // Recompute the scale when the viewport size changes.
+  // Recompute the scale when the viewport changes so full-window canvases stay in sync.
   window.addEventListener('resize', recalcScale);
   teardownCallbacks.push(() => {
     window.removeEventListener('resize', recalcScale);
@@ -178,6 +185,7 @@ export function createRenderLoop(
 ): RenderLoop {
   // Lock the simulation to 60 Hz with an accumulator to catch up after long frames.
   const FIXED_STEP_MS = 1000 / 60;
+  // Cap the maximum catch-up work so the loop cannot spiral when the tab was unfocused.
   const MAX_STEPS_PER_FRAME = 5;
 
   let rafId: number | null = null;
@@ -214,6 +222,7 @@ export function createRenderLoop(
 
     accumulator += delta;
 
+    // Execute fixed steps until we have consumed the accumulated real time.
     while (accumulator >= FIXED_STEP_MS) {
       tick(frame++);
       accumulator -= FIXED_STEP_MS;
@@ -286,6 +295,7 @@ export function drawPlaceholderScene(context: RenderContext, seed: RunSeed): voi
   ctx.stroke();
 
   withSeed(seed.value, (rng) => {
+    // Minimal palette that keeps the preview legible across dark and light monitors.
     const palette = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#a855f7'];
     const shapes = 12;
     const cellsX = Math.floor(width / cellSize);
