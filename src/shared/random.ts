@@ -43,9 +43,7 @@ export function createMulberry32(seed: Seed): RNG {
 }
 
 export function withSeed<T>(seed: Seed, consumer: (rng: RNG) => T): T {
-  // TODO: Provide helper to execute a function with an ephemeral RNG instance.
-  const rng = createMulberry32(seed);
-  return consumer(rng);
+  return consumer(createMulberry32(seed));
 }
 
 export function cloneRng(rng: RNG): RNG {
