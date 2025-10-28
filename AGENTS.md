@@ -19,6 +19,7 @@ Bump `package.json` with Semantic Versioning for every shipped change and tag re
 ## Agent Documentation Hygiene
 
 Every directory guiding autonomous work must own an `AGENTS.md` that explains local expectations; update them alongside structural changes and cross-link root guidance when useful.
+- Track outstanding code review feedback in `review-notes.md` at the repo root until addressed.
 
 ## Testing Guidelines
 

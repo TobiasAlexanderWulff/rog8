@@ -1,5 +1,5 @@
-1. Implement seeded RNG utilities in `src/shared/random.ts` (mulberry32, cloning, helpers).
-2. Flesh out canvas bootstrap and render loop in `src/render/bootstrap.ts`, then connect loop to `RunController`.
+X1. Implement seeded RNG utilities in `src/shared/random.ts` (mulberry32, cloning, helpers).
+X2. Flesh out canvas bootstrap and render loop in `src/render/bootstrap.ts`, then connect loop to `RunController`.
 3. Wire deterministic input handling by finishing `src/engine/input.ts` and hooking it into the main entry.
 4. Define ECS world basics in `src/engine/world.ts` and populate component management in `src/engine/components.ts`.
 5. Complete `RunController` logic in `src/engine/run-controller.ts`, including restart and state transitions.

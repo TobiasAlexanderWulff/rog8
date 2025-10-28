@@ -1,9 +1,7 @@
 /**
  * @fileoverview Unit tests for deterministic RNG helpers.
  */
-// TODO: Replace manual test type declarations once shared test environment is wired up.
-declare const describe: (name: string, fn: () => void) => void;
-declare const it: (name: string, fn: () => void) => void;
+import { describe, it } from 'vitest';
 
 import { cloneRng, createMulberry32, withSeed } from '../random';
 
