@@ -10,6 +10,7 @@ import {
   drawPlaceholderScene,
   type RenderContext,
 } from '../bootstrap';
+import { withSeed, type RunSeed } from '../../shared/random';
 
 /**
  * Placeholder suite for bootstrapCanvas until DOM harness is configured.
@@ -260,6 +261,190 @@ describe('createRenderLoop', () => {
  */
 describe('drawPlaceholderScene', () => {
   it('draws deterministic placeholder content for a given seed', () => {
-    // TODO: Capture canvas calls once a 2D context spy utility exists.
+    const width = 256;
+    const height = 144;
+    const cellSize = 8;
+    const seed: RunSeed = { value: 0x12345678 };
+    const scale = 3;
+
+    const { context: ctx, calls } = createCanvasContextSpy();
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+
+    const renderContext: RenderContext = {
+      canvas,
+      context: ctx,
+      scale,
+      teardown: vi.fn(),
+    };
+
+    drawPlaceholderScene(renderContext, seed);
+
+    const methodCalls = calls.filter(isMethodCall);
+    const propertyCalls = calls.filter(isPropertyCall);
+
+    expect(methodCalls[0]).toEqual({ kind: 'method', name: 'save', args: [] });
+    expect(methodCalls.find((call) => call.name === 'setTransform')).toEqual({
+      kind: 'method',
+      name: 'setTransform',
+      args: [1, 0, 0, 1, 0, 0],
+    });
+    expect(methodCalls.find((call) => call.name === 'clearRect')).toEqual({
+      kind: 'method',
+      name: 'clearRect',
+      args: [0, 0, width, height],
+    });
+
+    const fillRectCalls = methodCalls.filter((call) => call.name === 'fillRect');
+    expect(fillRectCalls).toHaveLength(13);
+    expect(fillRectCalls[0].args).toEqual([0, 0, width, height]);
+
+    const expectedShapes = withSeed(seed.value, (rng) => {
+      const palette = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#a855f7'];
+      const cellsX = Math.floor(width / cellSize);
+      const cellsY = Math.floor(height / cellSize);
+      const shapes: Array<{ rect: [number, number, number, number]; color: string }> = [];
+      for (let i = 0; i < 12; i += 1) {
+        const wCells = rng.nextInt(1, 4);
+        const hCells = rng.nextInt(1, 4);
+        const maxX = Math.max(0, cellsX - wCells);
+        const maxY = Math.max(0, cellsY - hCells);
+        const x = rng.nextInt(0, maxX) * cellSize;
+        const y = rng.nextInt(0, maxY) * cellSize;
+        const color = palette[rng.nextInt(0, palette.length - 1)];
+        shapes.push({ rect: [x, y, wCells * cellSize, hCells * cellSize], color });
+      }
+      return shapes;
+    });
+
+    const shapeRects = fillRectCalls
+      .slice(1)
+      .map((call) => call.args as [number, number, number, number]);
+    expect(shapeRects).toEqual(expectedShapes.map((shape) => shape.rect));
+
+    const fillStyleCalls = propertyCalls.filter((call) => call.name === 'fillStyle');
+    expect(fillStyleCalls[0]?.value).toBe('#0f172a');
+    expect(fillStyleCalls.slice(1, 13).map((call) => call.value)).toEqual(
+      expectedShapes.map((shape) => shape.color),
+    );
+    expect(fillStyleCalls.at(-1)?.value).toBe('#e2e8f0');
+
+    const strokeStyleCalls = propertyCalls.filter((call) => call.name === 'strokeStyle');
+    expect(strokeStyleCalls.map((call) => call.value)).toEqual(['#1e2a44', '#94a3b8']);
+
+    const lineWidthCalls = propertyCalls.filter((call) => call.name === 'lineWidth');
+    expect(lineWidthCalls.map((call) => call.value)).toEqual([1, 1]);
+
+    expect(propertyCalls.find((call) => call.name === 'font')?.value).toBe('8px monospace');
+    expect(propertyCalls.find((call) => call.name === 'textBaseline')?.value).toBe('top');
+
+    const beginPathCalls = methodCalls.filter((call) => call.name === 'beginPath');
+    expect(beginPathCalls).toHaveLength(2);
+
+    const strokeCalls = methodCalls.filter((call) => call.name === 'stroke');
+    expect(strokeCalls).toHaveLength(2);
+
+    const moveLineCalls = methodCalls.filter(
+      (call) => call.name === 'moveTo' || call.name === 'lineTo',
+    );
+    const expectedGridSegments =
+      (Math.floor(width / cellSize) + 1) * 2 + (Math.floor(height / cellSize) + 1) * 2 + 4;
+    expect(moveLineCalls).toHaveLength(expectedGridSegments);
+
+    const centerX = Math.floor(width / 2) + 0.5;
+    const centerY = Math.floor(height / 2) + 0.5;
+    const crosshair = moveLineCalls.slice(-4);
+    expect(crosshair).toEqual([
+      { kind: 'method', name: 'moveTo', args: [centerX, 0] },
+      { kind: 'method', name: 'lineTo', args: [centerX, height] },
+      { kind: 'method', name: 'moveTo', args: [0, centerY] },
+      { kind: 'method', name: 'lineTo', args: [width, centerY] },
+    ]);
+
+    const strokeRectCall = methodCalls.find((call) => call.name === 'strokeRect');
+    expect(strokeRectCall).toEqual({
+      kind: 'method',
+      name: 'strokeRect',
+      args: [0.5, 0.5, width - 1, height - 1],
+    });
+
+    const fillTextCalls = methodCalls.filter((call) => call.name === 'fillText');
+    expect(fillTextCalls).toEqual([
+      { kind: 'method', name: 'fillText', args: [`seed:${seed.value >>> 0}`, 4, 4] },
+      { kind: 'method', name: 'fillText', args: [`scale:${scale}`, 4, 14] },
+    ]);
+
+    expect(methodCalls.at(-1)).toEqual({ kind: 'method', name: 'restore', args: [] });
   });
 });
+
+type CanvasMethodCall = {
+  kind: 'method';
+  name: string;
+  args: unknown[];
+};
+
+type CanvasPropertyCall = {
+  kind: 'property';
+  name: string;
+  value: unknown;
+};
+
+type CanvasCall = CanvasMethodCall | CanvasPropertyCall;
+
+function isMethodCall(call: CanvasCall): call is CanvasMethodCall {
+  return call.kind === 'method';
+}
+
+function isPropertyCall(call: CanvasCall): call is CanvasPropertyCall {
+  return call.kind === 'property';
+}
+
+function createCanvasContextSpy(): { context: CanvasRenderingContext2D; calls: CanvasCall[] } {
+  const calls: CanvasCall[] = [];
+  const context = {} as CanvasRenderingContext2D;
+
+  const methodNames = [
+    'save',
+    'setTransform',
+    'clearRect',
+    'fillRect',
+    'beginPath',
+    'moveTo',
+    'lineTo',
+    'stroke',
+    'strokeRect',
+    'fillText',
+    'restore',
+  ] as const;
+
+  const propertyNames = ['fillStyle', 'strokeStyle', 'lineWidth', 'font', 'textBaseline'] as const;
+
+  for (const name of methodNames) {
+    Object.defineProperty(context, name, {
+      configurable: true,
+      enumerable: true,
+      value: (...args: unknown[]) => {
+        calls.push({ kind: 'method', name, args });
+      },
+    });
+  }
+
+  for (const name of propertyNames) {
+    let value: unknown;
+    Object.defineProperty(context, name, {
+      configurable: true,
+      enumerable: true,
+      get() {
+        return value;
+      },
+      set(next: unknown) {
+        value = next;
+        calls.push({ kind: 'property', name, value: next });
+      },
+    });
+  }
+
+  return { context, calls };
+}
