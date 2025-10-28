@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 /**
  * Numeric seed used to initialize deterministic random number generators.
  */
@@ -23,14 +21,22 @@ export interface RunSeed {
 
 const RNG_META = Symbol('rngMeta');
 
-type Mulberry32Meta = {
+type RngMeta = {
+  type: string;
+};
+
+type Mulberry32Meta = RngMeta & {
   type: 'mulberry32';
   getState(): number;
 };
 
 type TaggedRng = RNG & {
-  [RNG_META]?: Mulberry32Meta;
+  [RNG_META]?: RngMeta;
 };
+
+function isMulberry32Meta(meta: RngMeta): meta is Mulberry32Meta {
+  return meta.type === 'mulberry32';
+}
 
 /**
  * Builds a Mulberry32 RNG that exposes deterministic iteration over 32-bit integers.
@@ -72,7 +78,7 @@ export function createMulberry32(seed: Seed): RNG {
     value: {
       type: 'mulberry32',
       getState: () => stateRef.value,
-    } as Mulberry32Meta,
+    } satisfies Mulberry32Meta,
   });
 
   return rng;
@@ -102,9 +108,9 @@ export function cloneRng(rng: RNG): RNG {
     throw new Error('Unsupported RNG clone');
   }
 
-  if (meta.type === 'mulberry32') {
-    return createMulberry32(meta.getState());
+  if (!isMulberry32Meta(meta)) {
+    throw new Error(`Unsupported RNG type: ${meta.type}`);
   }
 
-  throw new Error(`Unsupported RNG type: ${meta.type}`);
+  return createMulberry32(meta.getState());
 }

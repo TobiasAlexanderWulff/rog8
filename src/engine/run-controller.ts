@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 import { createMulberry32, RunSeed } from '../shared/random';
 import { World, TickContext } from './world';
 import { InputManager } from './input';

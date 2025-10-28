@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 import type { World } from '../engine/world';
 import type { RunSeed } from '../shared/random';
 import type { GeneratedMap } from './mapgen/simple';

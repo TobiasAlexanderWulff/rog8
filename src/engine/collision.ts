@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 import type { MapGrid } from '../world/mapgen/simple';
 
 export interface CollisionResult {

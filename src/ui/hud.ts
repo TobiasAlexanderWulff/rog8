@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 import type { RunSeed } from '../shared/random';
 
 export interface HudState {

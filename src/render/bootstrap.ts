@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 import { RunSeed } from '../shared/random';
 
 export interface RenderContext {
@@ -15,6 +13,7 @@ export interface RenderLoop {
 
 export function bootstrapCanvas(rootId = 'app'): RenderContext {
   // TODO: Look up or create the root canvas element and configure integer scaling.
+  void rootId;
   throw new Error('TODO: bootstrapCanvas not implemented yet');
 }
 
@@ -23,7 +22,8 @@ export function createRenderLoop(
   tick: (frame: number) => void,
 ): RenderLoop {
   // TODO: Wire requestAnimationFrame to deterministic tick/update cadence.
-  let rafId = 0; // TODO: Track the active RAF handle once the loop is implemented.
+  void context;
+  void tick;
 
   return {
     start(): void {
