@@ -21,19 +21,39 @@ export interface RunSeed {
 
 const RNG_META = Symbol('rngMeta');
 
+/**
+ * Metadata attached to RNG instances so implementations can expose cloning hooks.
+ *
+ * @property type Unique identifier of the RNG algorithm.
+ */
 type RngMeta = {
   type: string;
 };
 
+/**
+ * Mulberry32-specific metadata exposed via {@link RNG_META}.
+ *
+ * @property type Literal discriminator for Mulberry32 RNGs.
+ * @property getState Function that retrieves the current internal state.
+ */
 type Mulberry32Meta = RngMeta & {
   type: 'mulberry32';
   getState(): number;
 };
 
+/**
+ * RNG instances tagged with optional metadata needed for safe cloning.
+ */
 type TaggedRng = RNG & {
   [RNG_META]?: RngMeta;
 };
 
+/**
+ * Type guard that narrows metadata to the Mulberry32 implementation.
+ *
+ * @param meta Metadata attached to an RNG instance.
+ * @returns True when the metadata references a Mulberry32 RNG.
+ */
 function isMulberry32Meta(meta: RngMeta): meta is Mulberry32Meta {
   return meta.type === 'mulberry32';
 }
@@ -42,11 +62,13 @@ function isMulberry32Meta(meta: RngMeta): meta is Mulberry32Meta {
  * Builds a Mulberry32 RNG that exposes deterministic iteration over 32-bit integers.
  *
  * @param seed Unsigned 32-bit seed that initializes the Mulberry32 state.
- * @return RNG instance bound to the provided seed.
+ * @returns RNG instance bound to the provided seed.
  */
 export function createMulberry32(seed: Seed): RNG {
+  // Track the unsigned 32-bit state in a closure so we can expose cloning hooks.
   const stateRef = { value: seed >>> 0 };
 
+  // Core Mulberry32 step that advances the state and returns a new u32 sample.
   const nextUint32 = (): number => {
     stateRef.value = (stateRef.value + 0x6d2b79f5) >>> 0;
     let t = stateRef.value;
@@ -68,7 +90,7 @@ export function createMulberry32(seed: Seed): RNG {
         min = max;
         max = tmp;
       }
-      //! WARNING: modulo reduction introduces slight bias when span does not divide 2^32 evenly.
+      // NOTE: Modulo reduction introduces slight bias when span does not divide 2^32 evenly.
       const span = max - min + 1;
       return min + (nextUint32() % span);
     },
@@ -89,7 +111,7 @@ export function createMulberry32(seed: Seed): RNG {
  *
  * @param seed Deterministic seed used to initialize the RNG.
  * @param consumer Callback that receives a seeded RNG instance.
- * @return Result returned by the consumer callback.
+ * @returns Result returned by the consumer callback.
  */
 export function withSeed<T>(seed: Seed, consumer: (rng: RNG) => T): T {
   return consumer(createMulberry32(seed));
@@ -99,7 +121,7 @@ export function withSeed<T>(seed: Seed, consumer: (rng: RNG) => T): T {
  * Creates a new RNG that mirrors the state of the provided instance.
  *
  * @param rng RNG instance to clone. Must be created via {@link createMulberry32}.
- * @return New RNG that continues from the same deterministic state.
+ * @returns New RNG that continues from the same deterministic state.
  * @throws Error when the RNG does not expose clone metadata.
  */
 export function cloneRng(rng: RNG): RNG {
