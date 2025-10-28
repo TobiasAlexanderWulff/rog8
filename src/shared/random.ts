@@ -12,18 +12,29 @@ export interface RunSeed {
   value: Seed;
 }
 
+const RNG_META = Symbol('rngMeta');
+
+type Mulberry32Meta = {
+  type: 'mulberry32';
+  getState(): number;
+};
+
+type TaggedRng = RNG & {
+  [RNG_META]?: Mulberry32Meta;
+};
+
 export function createMulberry32(seed: Seed): RNG {
-  let state = seed >>> 0;
+  const stateRef = { value: seed >>> 0 };
 
   const nextUint32 = (): number => {
-    state = (state + 0x6d2b79f5) >>> 0;
-    let t = state;
+    stateRef.value = (stateRef.value + 0x6d2b79f5) >>> 0;
+    let t = stateRef.value;
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= Math.imul(t ^ (t >>> 7), t | 61);
     return (t ^ (t >>> 14)) >>> 0;
   };
 
-  return {
+  const rng: TaggedRng = {
     next(): number {
       return nextUint32();
     },
@@ -40,6 +51,15 @@ export function createMulberry32(seed: Seed): RNG {
       return min + (nextUint32() % span);
     },
   };
+
+  Object.defineProperty(rng, RNG_META, {
+    value: {
+      type: 'mulberry32',
+      getState: () => stateRef.value,
+    } as Mulberry32Meta,
+  });
+
+  return rng;
 }
 
 export function withSeed<T>(seed: Seed, consumer: (rng: RNG) => T): T {
@@ -47,6 +67,14 @@ export function withSeed<T>(seed: Seed, consumer: (rng: RNG) => T): T {
 }
 
 export function cloneRng(rng: RNG): RNG {
-  // TODO: Allow cloning RNG state so systems can fork deterministic streams.
-  throw new Error('TODO: cloneRng not implemented yet');
+  const meta = (rng as TaggedRng)[RNG_META];
+  if (!meta) {
+    throw new Error('Unsupported RNG clone');
+  }
+
+  if (meta.type === 'mulberry32') {
+    return createMulberry32(meta.getState());
+  }
+
+  throw new Error(`Unsupported RNG type: ${meta.type}`);
 }
