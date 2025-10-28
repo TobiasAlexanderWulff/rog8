@@ -62,6 +62,7 @@ export function createMulberry32(seed: Seed): RNG {
         min = max;
         max = tmp;
       }
+      //! WARNING: modulo reduction introduces slight bias when span does not divide 2^32 evenly.
       const span = max - min + 1;
       return min + (nextUint32() % span);
     },
