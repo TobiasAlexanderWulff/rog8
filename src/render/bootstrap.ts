@@ -7,6 +7,7 @@ export interface RenderContext {
   canvas: HTMLCanvasElement;
   context: CanvasRenderingContext2D;
   scale: number;
+  teardown: () => void;
 }
 
 /**
@@ -101,7 +102,22 @@ export function bootstrapCanvas(rootId = 'app'): RenderContext {
   }
   context.imageSmoothingEnabled = false;
 
-  const renderContext: RenderContext = { canvas, context, scale };
+  const teardownCallbacks: Array<() => void> = [];
+  let tornDown = false;
+  const teardown = (): void => {
+    if (tornDown) {
+      return;
+    }
+    tornDown = true;
+    while (teardownCallbacks.length > 0) {
+      const cleanup = teardownCallbacks.pop();
+      if (cleanup) {
+        cleanup();
+      }
+    }
+  };
+
+  const renderContext: RenderContext = { canvas, context, scale, teardown };
 
   /**
    * Recalculates the integer canvas scale so the virtual resolution
@@ -127,6 +143,9 @@ export function bootstrapCanvas(rootId = 'app'): RenderContext {
 
   // Recompute the scale when the viewport size changes.
   window.addEventListener('resize', recalcScale);
+  teardownCallbacks.push(() => {
+    window.removeEventListener('resize', recalcScale);
+  });
 
   if (typeof ResizeObserver !== 'undefined') {
     const parent = canvas.parentElement;
@@ -136,6 +155,9 @@ export function bootstrapCanvas(rootId = 'app'): RenderContext {
         recalcScale();
       });
       observer.observe(parent);
+      teardownCallbacks.push(() => {
+        observer.disconnect();
+      });
     }
   }
 
