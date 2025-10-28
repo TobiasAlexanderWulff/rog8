@@ -4,7 +4,12 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { bootstrapCanvas, createRenderLoop, drawPlaceholderScene } from '../bootstrap';
+import {
+  bootstrapCanvas,
+  createRenderLoop,
+  drawPlaceholderScene,
+  type RenderContext,
+} from '../bootstrap';
 
 /**
  * Placeholder suite for bootstrapCanvas until DOM harness is configured.
@@ -122,7 +127,62 @@ describe('bootstrapCanvas', () => {
  */
 describe('createRenderLoop', () => {
   it('steps the tick callback at a fixed interval', () => {
-    // TODO: Provide RAF stubs to verify frame stepping logic.
+    const rafQueue: Array<{ id: number; callback: FrameRequestCallback }> = [];
+    let nextRafId = 1;
+
+    const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      const id = nextRafId++;
+      rafQueue.push({ id, callback });
+      return id;
+    });
+
+    const cancelSpy = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => {
+      const index = rafQueue.findIndex((entry) => entry.id === id);
+      if (index >= 0) {
+        rafQueue.splice(index, 1);
+      }
+    });
+
+    const dispatchFrame = (timestamp: number): void => {
+      if (rafQueue.length === 0) {
+        throw new Error('No scheduled animation frame to dispatch');
+      }
+      const { callback } = rafQueue.shift() as { id: number; callback: FrameRequestCallback };
+      callback(timestamp);
+    };
+
+    const tickSpy = vi.fn();
+    const loop = createRenderLoop({} as RenderContext, tickSpy);
+
+    loop.start();
+    expect(rafQueue.length).toBe(1);
+
+    dispatchFrame(0);
+    expect(tickSpy).toHaveBeenCalledTimes(1);
+    expect(tickSpy).toHaveBeenLastCalledWith(0);
+
+    dispatchFrame(17);
+    expect(tickSpy).toHaveBeenCalledTimes(2);
+    expect(tickSpy).toHaveBeenLastCalledWith(1);
+
+    dispatchFrame(34);
+    expect(tickSpy).toHaveBeenCalledTimes(3);
+    expect(tickSpy).toHaveBeenLastCalledWith(2);
+
+    dispatchFrame(200);
+    expect(tickSpy).toHaveBeenCalledTimes(8);
+    const frames = tickSpy.mock.calls.map((call): number => {
+      const [frame] = call as [number];
+      return frame;
+    });
+    expect(frames).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+
+    loop.stop();
+    expect(cancelSpy).toHaveBeenCalledTimes(1);
+    expect(rafQueue.length).toBe(0);
+
+    rafSpy.mockRestore();
+    cancelSpy.mockRestore();
   });
 
   it('resets loop state on stop', () => {
