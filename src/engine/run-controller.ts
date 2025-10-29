@@ -33,13 +33,16 @@ export class RunController {
     if (this.state !== 'playing') {
       return;
     }
+    const frame = this.frame;
+    this.input.beginFrame(frame);
     const rng = createMulberry32(this.seed.value);
     const context: TickContext = {
       delta,
-      frame: this.frame++,
+      frame,
       rng,
     };
     this.world.update(context);
+    this.frame = frame + 1;
   }
 
   triggerGameOver(): void {

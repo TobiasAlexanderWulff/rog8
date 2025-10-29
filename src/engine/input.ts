@@ -183,7 +183,6 @@ export class InputManager {
    *   frame: Frame index being processed.
    */
   beginFrame(frame: number): void {
-    // TODO: Call beginFrame from the main loop every tick so frameState advances.
     if (this.frameState.pressed.size !== 0) {
       this.frameState.pressed.clear();
     }
