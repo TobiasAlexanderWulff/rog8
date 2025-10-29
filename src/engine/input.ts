@@ -38,6 +38,8 @@ function isTrackedKey(code: string): code is KeyBinding {
 
 export class InputManager {
   private bindings: Set<KeyBinding> = new Set();
+  private pressedFrames: Map<KeyBinding, number> = new Map();
+  private releasedFrames: Map<KeyBinding, number> = new Map();
   private frameState: FrameInputState = {
     pressed: new Set(),
     held: new Set(),
@@ -71,6 +73,7 @@ export class InputManager {
       if (!this.bindings.has(binding)) {
         this.frameState.pressed.add(binding);
         this.frameState.held.add(binding);
+        this.pressedFrames.set(binding, this.frameState.frame);
         this.bindings.add(binding);
       }
     };
@@ -85,6 +88,7 @@ export class InputManager {
       if (this.bindings.delete(binding)) {
         this.frameState.held.delete(binding);
         this.frameState.released.add(binding);
+        this.releasedFrames.set(binding, this.frameState.frame);
       }
     };
 
@@ -111,17 +115,54 @@ export class InputManager {
   }
 
   isPressed(key: KeyBinding): boolean {
-    // TODO: Return true only for keys pressed on the current frame.
-    return this.frameState.pressed.has(key);
+    const pressedFrame = this.pressedFrames.get(key);
+    if (pressedFrame === undefined) {
+      return false;
+    }
+    if (pressedFrame === this.frameState.frame) {
+      return true;
+    }
+    if (pressedFrame < this.frameState.frame) {
+      this.pressedFrames.delete(key);
+    }
+    return false;
   }
 
   isHeld(key: KeyBinding): boolean {
-    // TODO: Return true for keys that remain held across frames.
-    return this.frameState.held.has(key);
+    if (!this.frameState.held.has(key)) {
+      return false;
+    }
+
+    const pressedFrame = this.pressedFrames.get(key);
+    if (pressedFrame === undefined) {
+      return true;
+    }
+
+    const frame = this.frameState.frame;
+    if (pressedFrame < frame) {
+      this.pressedFrames.delete(key);
+      return true;
+    }
+
+    return false;
   }
 
   isReleased(key: KeyBinding): boolean {
-    // TODO: Return true only on the frame where the key was released.
-    return this.frameState.released.has(key);
+    const releasedFrame = this.releasedFrames.get(key);
+    if (releasedFrame === undefined) {
+      return false;
+    }
+
+    const frame = this.frameState.frame;
+    if (releasedFrame === frame) {
+      return true;
+    }
+
+    if (releasedFrame < frame) {
+      this.releasedFrames.delete(key);
+      this.frameState.released.delete(key);
+    }
+
+    return false;
   }
 }
