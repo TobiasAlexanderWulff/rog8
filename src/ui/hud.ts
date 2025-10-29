@@ -8,8 +8,13 @@ export interface HudState {
 
 export function createHud(root: HTMLElement): HudState {
   // TODO: Mount HUD elements (canvas overlay or DOM) under the provided root.
-  void root;
-  throw new Error('TODO: createHud not implemented yet');
+  root.replaceChildren();
+  root.setAttribute('data-hud-ready', 'false');
+
+  return {
+    health: { current: 0, max: 0 },
+    seed: { value: 0 },
+  };
 }
 
 export function updateHud(state: HudState): void {
