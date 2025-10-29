@@ -9,11 +9,19 @@ import { withSeed, RunSeed } from './shared/random';
 
 const ROOT_ID = 'app'; // TODO: Keep in sync with actual DOM root.
 
+/**
+ * Generates the initial seed that drives deterministic game runs.
+ *
+ * @returns Seed wrapper containing a 32-bit unsigned integer.
+ */
 function createInitialSeed(): RunSeed {
   // TODO: Generate a deterministic seed (random per run, surfaced in HUD).
   return { value: Date.now() & 0xffffffff };
 }
 
+/**
+ * Entry point that wires together input, world, rendering, and HUD scaffolding.
+ */
 function main(): void {
   // TODO: Replace scaffolding with real bootstrap once systems are implemented.
   const seed = createInitialSeed();
