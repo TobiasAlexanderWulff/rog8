@@ -1,4 +1,5 @@
 import { createMulberry32, RunSeed } from '../shared/random';
+import type { RNG } from '../shared/random';
 import { World, TickContext } from './world';
 import { InputManager } from './input';
 
@@ -15,12 +16,14 @@ export class RunController {
   private state: RunState = 'init';
   private frame = 0;
   private seed: RunSeed;
+  private rng: RNG;
 
   constructor(world: World, input: InputManager, options: RunControllerOptions) {
     // TODO: Store options and bootstrap initial state.
     this.world = world;
     this.input = input;
     this.seed = options.seed;
+    this.rng = createMulberry32(this.seed.value);
   }
 
   start(): void {
@@ -35,7 +38,7 @@ export class RunController {
     }
     const frame = this.frame;
     this.input.beginFrame(frame);
-    const rng = createMulberry32(this.seed.value);
+    const rng = this.rng;
     const context: TickContext = {
       delta,
       frame,
@@ -54,5 +57,6 @@ export class RunController {
     // TODO: Reset world/entities while keeping the original seed.
     this.frame = 0;
     this.state = 'init';
+    this.rng = createMulberry32(this.seed.value);
   }
 }
