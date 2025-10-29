@@ -121,8 +121,28 @@ export class InputManager {
     this.listeners.delete(target);
   }
 
+  /**
+   * Resets transient input state for the upcoming frame while keeping the held bindings alive.
+   *
+   * @param frame Frame index being processed.
+   */
   beginFrame(frame: number): void {
-    // TODO: Reset per-frame state while keeping held keys intact.
+    if (this.frameState.pressed.size !== 0) {
+      this.frameState.pressed.clear();
+    }
+
+    if (this.frameState.released.size !== 0) {
+      this.frameState.released.clear();
+    }
+
+    if (this.frameState.held.size !== this.bindings.size) {
+      // Rehydrate held keys so consumers still reference the same Set instance.
+      this.frameState.held.clear();
+      for (const binding of this.bindings) {
+        this.frameState.held.add(binding);
+      }
+    }
+
     this.frameState.frame = frame;
   }
 
