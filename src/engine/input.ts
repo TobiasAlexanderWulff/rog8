@@ -105,6 +105,7 @@ export class InputManager {
 
     target.addEventListener('keydown', keydown);
     target.addEventListener('keyup', keyup);
+    // TODO: Handle window blur/visibilitychange to clear stuck bindings.
 
     this.listeners.set(target, { keydown, keyup });
   }
@@ -124,6 +125,7 @@ export class InputManager {
     // Remove the exact listener references registered during attach.
     target.removeEventListener('keydown', listeners.keydown);
     target.removeEventListener('keyup', listeners.keyup);
+    // TODO: Reset internal key state on detach so reattach starts clean.
     this.listeners.delete(target);
   }
 
@@ -134,6 +136,7 @@ export class InputManager {
    *   frame: Frame index being processed.
    */
   beginFrame(frame: number): void {
+    // TODO: Call beginFrame from the main loop every tick so frameState advances.
     if (this.frameState.pressed.size !== 0) {
       this.frameState.pressed.clear();
     }
