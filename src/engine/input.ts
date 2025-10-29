@@ -17,6 +17,25 @@ export interface FrameInputState {
   frame: number;
 }
 
+const TRACKED_KEYS: readonly KeyBinding[] = [
+  'ArrowUp',
+  'ArrowDown',
+  'ArrowLeft',
+  'ArrowRight',
+  'KeyW',
+  'KeyA',
+  'KeyS',
+  'KeyD',
+  'Space',
+  'KeyR',
+];
+
+const TRACKED_KEY_LOOKUP = new Set<string>(TRACKED_KEYS);
+
+function isTrackedKey(code: string): code is KeyBinding {
+  return TRACKED_KEY_LOOKUP.has(code);
+}
+
 export class InputManager {
   private bindings: Set<KeyBinding> = new Set();
   private frameState: FrameInputState = {
@@ -25,19 +44,65 @@ export class InputManager {
     released: new Set(),
     frame: 0,
   };
+  private listeners = new WeakMap<
+    Window,
+    {
+      keydown: (event: KeyboardEvent) => void;
+      keyup: (event: KeyboardEvent) => void;
+    }
+  >();
 
   constructor() {
     // TODO: Set up key listeners once real input wiring is ready.
   }
 
   attach(target: Window): void {
-    // TODO: Register keydown/keyup listeners on the provided window target.
-    void target;
+    if (this.listeners.has(target)) {
+      return;
+    }
+
+    const keydown = (event: KeyboardEvent): void => {
+      const code = event.code;
+      if (!isTrackedKey(code)) {
+        return;
+      }
+      const binding = code;
+
+      if (!this.bindings.has(binding)) {
+        this.frameState.pressed.add(binding);
+        this.frameState.held.add(binding);
+        this.bindings.add(binding);
+      }
+    };
+
+    const keyup = (event: KeyboardEvent): void => {
+      const code = event.code;
+      if (!isTrackedKey(code)) {
+        return;
+      }
+      const binding = code;
+
+      if (this.bindings.delete(binding)) {
+        this.frameState.held.delete(binding);
+        this.frameState.released.add(binding);
+      }
+    };
+
+    target.addEventListener('keydown', keydown);
+    target.addEventListener('keyup', keyup);
+
+    this.listeners.set(target, { keydown, keyup });
   }
 
   detach(target: Window): void {
-    // TODO: Remove previously registered listeners to avoid leaks.
-    void target;
+    const listeners = this.listeners.get(target);
+    if (!listeners) {
+      return;
+    }
+
+    target.removeEventListener('keydown', listeners.keydown);
+    target.removeEventListener('keyup', listeners.keyup);
+    this.listeners.delete(target);
   }
 
   beginFrame(frame: number): void {
