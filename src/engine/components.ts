@@ -22,6 +22,9 @@ export interface PlayerComponent {
 }
 
 export type EntityId = number;
+export type ComponentKey<T = unknown> = string & {
+  readonly __componentBrand?: T;
+};
 
 /**
  * Generic component storage that maps entity IDs to component data with deterministic iteration.
