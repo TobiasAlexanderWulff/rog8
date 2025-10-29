@@ -1,6 +1,14 @@
 import { createMulberry32, RunSeed } from '../shared/random';
 import type { RNG } from '../shared/random';
 import { World, TickContext, type ResourceKey } from './world';
+import type {
+  ComponentKey,
+  HealthComponent,
+  PlayerComponent,
+  TransformComponent,
+  VelocityComponent,
+} from './components';
+import type { EnemyComponent } from '../combat/enemy';
 import { InputManager } from './input';
 
 export type RunState = 'init' | 'playing' | 'game-over';
@@ -23,6 +31,16 @@ export class RunController {
   private readonly options: RunControllerOptions;
 
   private static readonly INPUT_RESOURCE_KEY = 'engine.input-manager' as ResourceKey<InputManager>;
+  private static readonly TRANSFORM_COMPONENT_KEY =
+    'component.transform' as ComponentKey<TransformComponent>;
+  private static readonly VELOCITY_COMPONENT_KEY =
+    'component.velocity' as ComponentKey<VelocityComponent>;
+  private static readonly HEALTH_COMPONENT_KEY =
+    'component.health' as ComponentKey<HealthComponent>;
+  private static readonly PLAYER_COMPONENT_KEY =
+    'component.player' as ComponentKey<PlayerComponent>;
+  private static readonly ENEMY_COMPONENT_KEY = 'component.enemy' as ComponentKey<EnemyComponent>;
+  private static readonly PLAYER_STARTING_HEALTH = 5;
 
   /**
    * Builds a controller that keeps world updates deterministic for a given seed.
@@ -49,7 +67,30 @@ export class RunController {
    * Transitions into the playing state, preparing the first update tick.
    */
   start(): void {
-    // TODO: Transition into the playing state and spawn initial entities.
+    if (this.state !== 'init') {
+      return;
+    }
+
+    this.ensureComponentStore(RunController.TRANSFORM_COMPONENT_KEY);
+    this.ensureComponentStore(RunController.VELOCITY_COMPONENT_KEY);
+    this.ensureComponentStore(RunController.HEALTH_COMPONENT_KEY);
+    this.ensureComponentStore(RunController.PLAYER_COMPONENT_KEY);
+    this.ensureComponentStore(RunController.ENEMY_COMPONENT_KEY);
+
+    const player = this.world.createEntity();
+    this.world.addComponent(player, RunController.TRANSFORM_COMPONENT_KEY, { x: 0, y: 0 });
+    this.world.addComponent(player, RunController.VELOCITY_COMPONENT_KEY, { vx: 0, vy: 0 });
+    this.world.addComponent(player, RunController.HEALTH_COMPONENT_KEY, {
+      current: RunController.PLAYER_STARTING_HEALTH,
+      max: RunController.PLAYER_STARTING_HEALTH,
+    });
+    this.world.addComponent(player, RunController.PLAYER_COMPONENT_KEY, { name: 'Player' });
+
+    const enemy = this.world.createEntity();
+    this.world.addComponent(enemy, RunController.TRANSFORM_COMPONENT_KEY, { x: 5, y: 5 });
+    this.world.addComponent(enemy, RunController.HEALTH_COMPONENT_KEY, { current: 1, max: 1 });
+    this.world.addComponent(enemy, RunController.ENEMY_COMPONENT_KEY, { archetype: 'grunt' });
+
     this.state = 'playing';
   }
 
@@ -101,6 +142,12 @@ export class RunController {
   private registerCoreResources(): void {
     if (!this.world.hasResource(RunController.INPUT_RESOURCE_KEY)) {
       this.world.registerResource(RunController.INPUT_RESOURCE_KEY, this.input);
+    }
+  }
+
+  private ensureComponentStore<T>(componentKey: ComponentKey<T>): void {
+    if (!this.world.getComponentStore(componentKey)) {
+      this.world.registerComponentStore(componentKey);
     }
   }
 }
