@@ -55,7 +55,9 @@ export class InputManager {
   >();
 
   constructor() {
-    // TODO: Set up key listeners once real input wiring is ready.
+    if (typeof window !== 'undefined') {
+      this.attach(window);
+    }
   }
 
   /**
