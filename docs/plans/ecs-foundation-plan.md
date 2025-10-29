@@ -100,9 +100,9 @@
 
 ## Deliverables Checklist
 
-- [ ] Component storage abstractions in `src/engine/components.ts`.
-- [ ] Updated `World` class with entity/component APIs and deterministic system scheduling.
-- [ ] Resource management helpers (world-level).
-- [ ] Reset/cleanup API consumed by `RunController`.
-- [ ] Unit tests validating ECS behaviour.
-- [ ] Documentation updates (`docs/TECH_STACK.md`, any affected `AGENTS.md`) describing new ECS contracts.
+- [x] Component storage abstractions in `src/engine/components.ts`.
+- [x] Updated `World` class with entity/component APIs and deterministic system scheduling.
+- [x] Resource management helpers (world-level).
+- [x] Reset/cleanup API consumed by `RunController`.
+- [x] Unit tests validating ECS behaviour.
+- [x] Documentation updates (`docs/TECH_STACK.md`, any affected `AGENTS.md`) describing new ECS contracts.

@@ -1,6 +1,6 @@
 import { createMulberry32, RunSeed } from '../shared/random';
 import type { RNG } from '../shared/random';
-import { World, TickContext } from './world';
+import { World, TickContext, type ResourceKey } from './world';
 import { InputManager } from './input';
 
 export type RunState = 'init' | 'playing' | 'game-over';
@@ -21,6 +21,8 @@ export class RunController {
   private seed: RunSeed;
   private rng: RNG;
 
+  private static readonly INPUT_RESOURCE_KEY = 'engine.input-manager' as ResourceKey<InputManager>;
+
   /**
    * Builds a controller that keeps world updates deterministic for a given seed.
    *
@@ -34,6 +36,7 @@ export class RunController {
     this.input = input;
     this.seed = options.seed;
     this.rng = createMulberry32(this.seed.value);
+    this.registerCoreResources();
   }
 
   /**
@@ -82,5 +85,16 @@ export class RunController {
     this.frame = 0;
     this.state = 'init';
     this.rng = createMulberry32(this.seed.value);
+    this.world.reset();
+    this.registerCoreResources();
+  }
+
+  /**
+   * Ensures world-level resources are registered after construction or reset.
+   */
+  private registerCoreResources(): void {
+    if (!this.world.hasResource(RunController.INPUT_RESOURCE_KEY)) {
+      this.world.registerResource(RunController.INPUT_RESOURCE_KEY, this.input);
+    }
   }
 }

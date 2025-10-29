@@ -27,6 +27,10 @@ export interface Entity {
 
 type ComponentName = ComponentKey;
 
+export type ResourceKey<T = unknown> = string & {
+  readonly __resourceBrand?: T;
+};
+
 /**
  * Core ECS world that tracks entities, component stores, and registered systems.
  */
@@ -41,6 +45,7 @@ export class World {
     string,
     { componentName: ComponentName; entityId: EntityId }
   >();
+  private readonly resources = new Map<ResourceKey, unknown>();
 
   /**
    * Allocates a new entity and assigns a unique identifier.
@@ -204,6 +209,50 @@ export class World {
   }
 
   /**
+   * Registers a world-level singleton resource.
+   *
+   * @param resourceKey Identifier used by systems to locate the resource.
+   * @param resource Resource instance to store.
+   * @throws Error when a resource with the same key already exists.
+   */
+  registerResource<T>(resourceKey: ResourceKey<T>, resource: T): void {
+    if (this.resources.has(resourceKey)) {
+      throw new Error(`Resource already registered: ${resourceKey}`);
+    }
+    this.resources.set(resourceKey, resource);
+  }
+
+  /**
+   * Checks whether a resource is registered on the world.
+   *
+   * @param resourceKey Identifier tied to the resource.
+   * @returns True when the resource exists.
+   */
+  hasResource(resourceKey: ResourceKey): boolean {
+    return this.resources.has(resourceKey);
+  }
+
+  /**
+   * Retrieves a resource when it has been registered.
+   *
+   * @param resourceKey Identifier tied to the resource.
+   * @returns Resource instance or undefined when absent.
+   */
+  getResource<T>(resourceKey: ResourceKey<T>): T | undefined {
+    return this.resources.get(resourceKey) as T | undefined;
+  }
+
+  /**
+   * Removes a resource and returns whether it existed.
+   *
+   * @param resourceKey Identifier tied to the resource.
+   * @returns True when the resource was removed.
+   */
+  removeResource(resourceKey: ResourceKey): boolean {
+    return this.resources.delete(resourceKey);
+  }
+
+  /**
    * Executes all registered systems with the provided tick context.
    *
    * @param context Frame metadata that each system receives.
@@ -215,6 +264,24 @@ export class World {
 
     this.flushComponentRemovals();
     this.flushEntityRemovals();
+  }
+
+  /**
+   * Clears entities, component state, pending queues, and resources while
+   * preserving registered systems and component stores.
+   */
+  reset(): void {
+    this.entities.clear();
+    this.componentsByEntity.clear();
+    this.pendingEntityRemovals.clear();
+    this.pendingComponentRemovals.clear();
+    this.resources.clear();
+
+    for (const store of this.componentStores.values()) {
+      store.clear();
+    }
+
+    this.nextEntityId = 1;
   }
 
   /**

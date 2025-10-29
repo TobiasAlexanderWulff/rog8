@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { World, type TickContext } from '../world';
+import { World, type TickContext, type ResourceKey } from '../world';
 
 const noopRng = {
   next: () => 0,
@@ -94,5 +94,51 @@ describe('World component lifecycle', () => {
     expect(world.hasComponent(entity, 'Health')).toBe(false);
     expect(world.getComponent(entity, 'Health')).toBeUndefined();
     expect(world.isEntityAlive(entity)).toBe(false);
+  });
+});
+
+describe('World resources and reset', () => {
+  const SAMPLE_RESOURCE = 'resource.sample' as ResourceKey<{ id: string }>;
+
+  it('registers, reads, and removes resources', () => {
+    const world = new World();
+    world.registerResource(SAMPLE_RESOURCE, { id: 'alpha' });
+
+    expect(world.getResource(SAMPLE_RESOURCE)).toEqual({ id: 'alpha' });
+    expect(world.hasResource(SAMPLE_RESOURCE)).toBe(true);
+
+    const removed = world.removeResource(SAMPLE_RESOURCE);
+    expect(removed).toBe(true);
+    expect(world.hasResource(SAMPLE_RESOURCE)).toBe(false);
+    expect(world.getResource(SAMPLE_RESOURCE)).toBeUndefined();
+  });
+
+  it('rejects duplicate resource keys', () => {
+    const world = new World();
+    world.registerResource(SAMPLE_RESOURCE, { id: 'alpha' });
+
+    expect(() => {
+      world.registerResource(SAMPLE_RESOURCE, { id: 'beta' });
+    }).toThrowError('Resource already registered: resource.sample');
+  });
+
+  it('clears entities, components, and resources during reset', () => {
+    const world = new World();
+    const healthStore = world.registerComponentStore<{ hp: number }>('Health');
+    world.registerResource(SAMPLE_RESOURCE, { id: 'alpha' });
+
+    const entity = world.createEntity();
+    world.addComponent(entity, 'Health', { hp: 5 });
+
+    world.reset();
+
+    expect(world.isEntityAlive(entity)).toBe(false);
+    expect(world.hasComponent(entity, 'Health')).toBe(false);
+    expect(world.getComponent(entity, 'Health')).toBeUndefined();
+    expect(world.getResource(SAMPLE_RESOURCE)).toBeUndefined();
+    expect(healthStore.entries()).toEqual([]);
+
+    const freshEntity = world.createEntity();
+    expect(freshEntity.id).toBe(1);
   });
 });

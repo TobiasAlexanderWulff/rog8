@@ -5,6 +5,9 @@
 - **TypeScript** für Typsicherheit und gute Dev-Experience
 - **Vite** für ultraschnelles HMR-Development
 - **ECS-Architektur** (Entity-Component-System) für modulare Spiellogik
+  - Deterministische Component Stores, priorisierte Systemscheduling
+  - Weltweite Resource-Map für Input, Collision u.ä.
+  - `World.reset()` räumt Entities/Komponenten/Resources für Seed-Replays
 
 ## 🖼️ Rendering
 
