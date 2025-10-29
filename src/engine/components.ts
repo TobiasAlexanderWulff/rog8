@@ -35,6 +35,7 @@ export class ComponentStore<T> {
 
   add(entityId: EntityId, component: T): void {
     this.components.set(entityId, component);
+    this.queuedRemovals.delete(entityId);
   }
 
   get(entityId: EntityId): T | undefined {

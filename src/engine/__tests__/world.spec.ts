@@ -60,6 +60,22 @@ describe('World component lifecycle', () => {
     expect(world.getComponent(entity, 'Tag')).toBeUndefined();
   });
 
+  it('cancels queued component removals when re-adding before the flush', () => {
+    const world = new World();
+    world.registerComponentStore<{ tag: string }>('Tag');
+
+    const entity = world.createEntity();
+    world.addComponent(entity, 'Tag', { tag: 'initial' });
+
+    world.queueRemoveComponent(entity, 'Tag');
+    world.addComponent(entity, 'Tag', { tag: 'persist' });
+
+    world.update(tickContext);
+
+    expect(world.hasComponent(entity, 'Tag')).toBe(true);
+    expect(world.getComponent(entity, 'Tag')).toEqual({ tag: 'persist' });
+  });
+
   it('destroys entities and clears component state after the next tick', () => {
     const world = new World();
     world.registerComponentStore<{ hp: number }>('Health');

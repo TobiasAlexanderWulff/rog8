@@ -72,6 +72,10 @@ export class World {
     this.assertEntityAlive(entityId);
     const store = this.requireComponentStore<T>(componentName);
     store.add(entityId, component);
+    const removalKey = this.toRemovalKey(entityId, componentName);
+    if (this.pendingComponentRemovals.has(removalKey)) {
+      this.pendingComponentRemovals.delete(removalKey);
+    }
     let componentSet = this.componentsByEntity.get(entityId);
     if (!componentSet) {
       componentSet = new Set<ComponentName>();
