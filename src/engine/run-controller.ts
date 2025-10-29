@@ -10,6 +10,9 @@ export interface RunControllerOptions {
   targetDeltaMs: number;
 }
 
+/**
+ * Coordinates high-level game loop state, feeding ticks into the ECS world.
+ */
 export class RunController {
   private world: World;
   private input: InputManager;
@@ -18,6 +21,13 @@ export class RunController {
   private seed: RunSeed;
   private rng: RNG;
 
+  /**
+   * Builds a controller that keeps world updates deterministic for a given seed.
+   *
+   * @param world ECS world instance that receives update ticks.
+   * @param input Input manager that exposes per-frame state.
+   * @param options Mutable configuration such as seed and target delta.
+   */
   constructor(world: World, input: InputManager, options: RunControllerOptions) {
     // TODO: Store options and bootstrap initial state.
     this.world = world;
@@ -26,11 +36,19 @@ export class RunController {
     this.rng = createMulberry32(this.seed.value);
   }
 
+  /**
+   * Transitions into the playing state, preparing the first update tick.
+   */
   start(): void {
     // TODO: Transition into the playing state and spawn initial entities.
     this.state = 'playing';
   }
 
+  /**
+   * Steps the simulation forward by one frame when the run is active.
+   *
+   * @param delta Elapsed time in milliseconds since the previous update.
+   */
   update(delta: number): void {
     // TODO: Advance world ticks deterministically based on delta and stored seed.
     if (this.state !== 'playing') {
@@ -48,11 +66,17 @@ export class RunController {
     this.frame = frame + 1;
   }
 
+  /**
+   * Switches the run into the game-over state.
+   */
   triggerGameOver(): void {
     // TODO: Handle transitions from playing to game-over state.
     this.state = 'game-over';
   }
 
+  /**
+   * Resets controller state so the run can be started again with the original seed.
+   */
   restart(): void {
     // TODO: Reset world/entities while keeping the original seed.
     this.frame = 0;

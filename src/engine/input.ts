@@ -32,10 +32,16 @@ const TRACKED_KEYS: readonly KeyBinding[] = [
 
 const TRACKED_KEY_LOOKUP = new Set<string>(TRACKED_KEYS);
 
+/**
+ * Narrows arbitrary keyboard codes to the subset tracked by the input manager.
+ */
 function isTrackedKey(code: string): code is KeyBinding {
   return TRACKED_KEY_LOOKUP.has(code);
 }
 
+/**
+ * Tracks keyboard input state and surfaces per-frame pressed/held/released queries.
+ */
 export class InputManager {
   private bindings: Set<KeyBinding> = new Set();
   private pressedFrames: Map<KeyBinding, number> = new Map();
