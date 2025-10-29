@@ -130,8 +130,8 @@ export class InputManager {
   /**
    * Resets transient input state for the upcoming frame while keeping the held bindings alive.
    *
-    * Args:
-    *   frame: Frame index being processed.
+   * Args:
+   *   frame: Frame index being processed.
    */
   beginFrame(frame: number): void {
     if (this.frameState.pressed.size !== 0) {
