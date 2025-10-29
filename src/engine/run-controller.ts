@@ -26,6 +26,7 @@ export class RunController {
   private input: InputManager;
   private state: RunState = 'init';
   private frame = 0;
+  private accumulator = 0;
   private seed: RunSeed;
   private rng: RNG;
   private readonly options: RunControllerOptions;
@@ -50,6 +51,9 @@ export class RunController {
    * @param options Mutable configuration such as seed and target delta.
    */
   constructor(world: World, input: InputManager, options: RunControllerOptions) {
+    if (options.targetDeltaMs <= 0) {
+      throw new Error('RunController requires a positive target delta.');
+    }
     this.world = world;
     this.input = input;
     this.options = {
@@ -100,20 +104,28 @@ export class RunController {
    * @param delta Elapsed time in milliseconds since the previous update.
    */
   update(delta: number): void {
-    // TODO: Advance world ticks deterministically based on delta and stored seed.
     if (this.state !== 'playing') {
       return;
     }
-    const frame = this.frame;
-    this.input.beginFrame(frame);
-    const rng = this.rng;
-    const context: TickContext = {
-      delta,
-      frame,
-      rng,
-    };
-    this.world.update(context);
-    this.frame = frame + 1;
+    if (delta <= 0) {
+      return;
+    }
+
+    this.accumulator += delta;
+    const step = this.options.targetDeltaMs;
+
+    while (this.accumulator >= step) {
+      const frame = this.frame;
+      this.input.beginFrame(frame);
+      const context: TickContext = {
+        delta: step,
+        frame,
+        rng: this.rng,
+      };
+      this.world.update(context);
+      this.frame = frame + 1;
+      this.accumulator -= step;
+    }
   }
 
   /**
@@ -130,6 +142,7 @@ export class RunController {
   restart(): void {
     // TODO: Reset world/entities while keeping the original seed.
     this.frame = 0;
+    this.accumulator = 0;
     this.state = 'init';
     this.rng = createMulberry32(this.seed.value);
     this.world.reset();
