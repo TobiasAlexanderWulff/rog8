@@ -132,7 +132,11 @@ export class RunController {
    * Switches the run into the game-over state.
    */
   triggerGameOver(): void {
-    // TODO: Handle transitions from playing to game-over state.
+    if (this.state !== 'playing') {
+      return;
+    }
+
+    this.accumulator = this.options.targetDeltaMs;
     this.state = 'game-over';
   }
 
