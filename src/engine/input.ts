@@ -51,6 +51,8 @@ export class InputManager {
     {
       keydown: (event: KeyboardEvent) => void;
       keyup: (event: KeyboardEvent) => void;
+      blur: () => void;
+      visibilitychange?: () => void;
     }
   >();
 
@@ -103,11 +105,50 @@ export class InputManager {
       }
     };
 
+    const clearBindings = (): void => {
+      if (this.bindings.size === 0) {
+        return;
+      }
+
+      this.bindings.clear();
+      if (this.frameState.pressed.size !== 0) {
+        this.frameState.pressed.clear();
+      }
+      if (this.frameState.held.size !== 0) {
+        this.frameState.held.clear();
+      }
+      if (this.frameState.released.size !== 0) {
+        this.frameState.released.clear();
+      }
+      if (this.pressedFrames.size !== 0) {
+        this.pressedFrames.clear();
+      }
+      if (this.releasedFrames.size !== 0) {
+        this.releasedFrames.clear();
+      }
+    };
+
+    const blur = (): void => {
+      clearBindings();
+    };
+
+    const visibilitychange =
+      typeof target.document !== 'undefined'
+        ? (): void => {
+            if (target.document.visibilityState !== 'visible') {
+              clearBindings();
+            }
+          }
+        : undefined;
+
     target.addEventListener('keydown', keydown);
     target.addEventListener('keyup', keyup);
-    // TODO: Handle window blur/visibilitychange to clear stuck bindings.
+    target.addEventListener('blur', blur);
+    if (visibilitychange) {
+      target.document.addEventListener('visibilitychange', visibilitychange);
+    }
 
-    this.listeners.set(target, { keydown, keyup });
+    this.listeners.set(target, { keydown, keyup, blur, visibilitychange });
   }
 
   /**
@@ -125,6 +166,10 @@ export class InputManager {
     // Remove the exact listener references registered during attach.
     target.removeEventListener('keydown', listeners.keydown);
     target.removeEventListener('keyup', listeners.keyup);
+    target.removeEventListener('blur', listeners.blur);
+    if (listeners.visibilitychange && typeof target.document !== 'undefined') {
+      target.document.removeEventListener('visibilitychange', listeners.visibilitychange);
+    }
     // TODO: Reset internal key state on detach so reattach starts clean.
     this.listeners.delete(target);
   }
