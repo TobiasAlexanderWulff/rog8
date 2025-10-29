@@ -106,26 +106,7 @@ export class InputManager {
     };
 
     const clearBindings = (): void => {
-      if (this.bindings.size === 0) {
-        return;
-      }
-
-      this.bindings.clear();
-      if (this.frameState.pressed.size !== 0) {
-        this.frameState.pressed.clear();
-      }
-      if (this.frameState.held.size !== 0) {
-        this.frameState.held.clear();
-      }
-      if (this.frameState.released.size !== 0) {
-        this.frameState.released.clear();
-      }
-      if (this.pressedFrames.size !== 0) {
-        this.pressedFrames.clear();
-      }
-      if (this.releasedFrames.size !== 0) {
-        this.releasedFrames.clear();
-      }
+      this.resetState();
     };
 
     const blur = (): void => {
@@ -170,8 +151,29 @@ export class InputManager {
     if (listeners.visibilitychange && typeof target.document !== 'undefined') {
       target.document.removeEventListener('visibilitychange', listeners.visibilitychange);
     }
-    // TODO: Reset internal key state on detach so reattach starts clean.
+    this.resetState();
     this.listeners.delete(target);
+  }
+
+  private resetState(): void {
+    if (this.bindings.size !== 0) {
+      this.bindings.clear();
+    }
+    if (this.frameState.pressed.size !== 0) {
+      this.frameState.pressed.clear();
+    }
+    if (this.frameState.held.size !== 0) {
+      this.frameState.held.clear();
+    }
+    if (this.frameState.released.size !== 0) {
+      this.frameState.released.clear();
+    }
+    if (this.pressedFrames.size !== 0) {
+      this.pressedFrames.clear();
+    }
+    if (this.releasedFrames.size !== 0) {
+      this.releasedFrames.clear();
+    }
   }
 
   /**
