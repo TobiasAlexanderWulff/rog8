@@ -144,12 +144,12 @@ export class RunController {
    * Resets controller state so the run can be started again with the original seed.
    */
   restart(): void {
-    // TODO: Reset world/entities while keeping the original seed.
+    const originalSeed = this.seed.value;
+    this.world.reset();
     this.frame = 0;
     this.accumulator = 0;
     this.state = 'init';
-    this.rng = createMulberry32(this.seed.value);
-    this.world.reset();
+    this.rng = createMulberry32(originalSeed);
     this.registerCoreResources();
   }
 
