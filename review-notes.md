@@ -1,6 +1,6 @@
 # Review Notes
 
-- **[P0] Avoid crashing in `createHud`** — `src/ui/hud.ts:9-12`  
-  `main.ts` invokes `createHud` whenever `#hud` exists, and `index.html` always renders that element. The stub currently throws `Error('TODO: createHud not implemented yet')`, so the runtime crashes immediately. Either remove the call until the HUD works or return a no-op placeholder so the app keeps running.
-- **[P1] Keep RNG progress between frames** — `src/engine/run-controller.ts:36-38`  
-  `update` rebuilds a new `Mulberry32` with `this.seed.value` every frame, so each tick replays identical random samples. Persist a single RNG instance (or clone from shared mutable state once per call) so systems advance randomness correctly.
+- **[P0] Stop throwing from `createHud` stub** — `src/ui/hud.ts:10-13`  
+  `main.ts` calls `createHud` whenever `#hud` exists, and `index.html` always renders that element. The factory still throws `Error('TODO: createHud not implemented yet')`, so startup always crashes. Guard the invocation or return a no-op placeholder until the HUD ships.
+- **[P1] Avoid reseeding RNG every update** — `src/engine/run-controller.ts:36-44`  
+  `update` rebuilds a `Mulberry32` from the same seed each frame, so randomness never advances. Persist the RNG instance (or clone and advance it) instead of recreating it per tick.
