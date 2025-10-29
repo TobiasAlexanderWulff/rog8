@@ -20,6 +20,7 @@ export class RunController {
   private frame = 0;
   private seed: RunSeed;
   private rng: RNG;
+  private readonly options: RunControllerOptions;
 
   private static readonly INPUT_RESOURCE_KEY = 'engine.input-manager' as ResourceKey<InputManager>;
 
@@ -31,10 +32,15 @@ export class RunController {
    * @param options Mutable configuration such as seed and target delta.
    */
   constructor(world: World, input: InputManager, options: RunControllerOptions) {
-    // TODO: Store options and bootstrap initial state.
     this.world = world;
     this.input = input;
-    this.seed = options.seed;
+    this.options = {
+      targetDeltaMs: options.targetDeltaMs,
+      seed: { value: options.seed.value },
+    };
+    this.state = 'init';
+    this.frame = 0;
+    this.seed = { value: this.options.seed.value };
     this.rng = createMulberry32(this.seed.value);
     this.registerCoreResources();
   }
