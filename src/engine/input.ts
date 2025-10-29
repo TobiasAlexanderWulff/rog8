@@ -63,7 +63,8 @@ export class InputManager {
   /**
    * Attaches keyboard listeners to track pressed, held, and released keys.
    *
-   * @param target - The window object that dispatches keyboard events.
+   * Args:
+   *   target: Window instance that dispatches keyboard events.
    */
   attach(target: Window): void {
     // Bail out if listeners for this window instance were already registered.
@@ -79,6 +80,7 @@ export class InputManager {
       const binding = code;
 
       if (!this.bindings.has(binding)) {
+        // First press this frame: register for pressed + held sets and memoize the frame.
         this.frameState.pressed.add(binding);
         this.frameState.held.add(binding);
         this.pressedFrames.set(binding, this.frameState.frame);
@@ -94,6 +96,7 @@ export class InputManager {
       const binding = code;
 
       if (this.bindings.delete(binding)) {
+        // Transition to released state while keeping frame metadata in sync.
         this.frameState.held.delete(binding);
         this.frameState.released.add(binding);
         this.releasedFrames.set(binding, this.frameState.frame);
@@ -107,9 +110,10 @@ export class InputManager {
   }
 
   /**
-   * Remove registered key listeners from the given window to prevent leaks.
+   * Removes registered key listeners from the given window to prevent leaks.
    *
-   * @param target The window instance to detach the listeners from.
+   * Args:
+   *   target: Window instance to detach the listeners from.
    */
   detach(target: Window): void {
     const listeners = this.listeners.get(target);
@@ -126,7 +130,8 @@ export class InputManager {
   /**
    * Resets transient input state for the upcoming frame while keeping the held bindings alive.
    *
-   * @param frame Frame index being processed.
+    * Args:
+    *   frame: Frame index being processed.
    */
   beginFrame(frame: number): void {
     if (this.frameState.pressed.size !== 0) {
@@ -151,8 +156,11 @@ export class InputManager {
   /**
    * Determines whether a key was newly pressed during the active frame.
    *
-   * @param key The binding to check.
-   * @returns True only if this frame registered a fresh key press.
+   * Args:
+   *   key: Binding to check for a fresh press.
+   *
+   * Returns:
+   *   True only if this frame registered a fresh key press.
    */
   isPressed(key: KeyBinding): boolean {
     const pressedFrame = this.pressedFrames.get(key);
@@ -172,8 +180,11 @@ export class InputManager {
   /**
    * Determines whether a key should be treated as held on the current frame.
    *
-   * @param key Key binding to evaluate.
-   * @returns True when the key remains down beyond its initial press frame.
+   * Args:
+   *   key: Binding to evaluate for held state.
+   *
+   * Returns:
+   *   True when the key remains down beyond its initial press frame.
    */
   isHeld(key: KeyBinding): boolean {
     if (!this.frameState.held.has(key)) {
@@ -198,8 +209,11 @@ export class InputManager {
   /**
    * Determines whether the given key was released during the current frame.
    *
-   * @param key The binding to query for a release event.
-   * @returns True if the key transitioned to released this frame; otherwise, false.
+   * Args:
+   *   key: Binding to query for a release event.
+   *
+   * Returns:
+   *   True if the key transitioned to released this frame; otherwise, false.
    */
   isReleased(key: KeyBinding): boolean {
     const releasedFrame = this.releasedFrames.get(key);
