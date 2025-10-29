@@ -20,9 +20,10 @@ function main(): void {
   const renderContext = bootstrapCanvas(ROOT_ID);
   const world = new World();
   const input = new InputManager();
+  const targetDeltaMs = 1000 / 60;
   const controller = new RunController(world, input, {
     seed,
-    targetDeltaMs: 16.67,
+    targetDeltaMs,
   });
 
   const hudRoot = document.getElementById('hud');
@@ -30,9 +31,8 @@ function main(): void {
     createHud(hudRoot);
   }
 
-  const loop = createRenderLoop(renderContext, (frame) => {
-    // TODO: Call into run controller update once delta timing is wired up.
-    void frame;
+  const loop = createRenderLoop(renderContext, (_frame) => {
+    controller.update(targetDeltaMs);
     drawPlaceholderScene(renderContext, seed);
   });
 
