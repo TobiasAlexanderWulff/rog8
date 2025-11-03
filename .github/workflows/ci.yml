@@ -23,18 +23,10 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: pnpm-lock.yaml
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.19.0
-          standalone: true
-
-      - name: Verify pnpm setup
+      - name: Install pnpm
         run: |
-          if ! command -v pnpm >/dev/null 2>&1; then
-            corepack enable
-            corepack prepare pnpm@10.19.0 --activate
-          fi
+          corepack enable
+          corepack prepare pnpm@10.19.0 --activate
           pnpm --version
 
       - name: Install dependencies
