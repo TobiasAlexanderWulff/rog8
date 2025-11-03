@@ -5,7 +5,9 @@ import type { MapGrid } from '../world/mapgen/simple';
  */
 export interface CollisionResult {
   blocked: boolean;
-  // TODO: Add additional data such as penetration depth or slide vector.
+  penetrationDepth: number;
+  slideVectorX: number;
+  slideVectorY: number;
 }
 
 /**
@@ -21,5 +23,10 @@ export function checkCollision(map: MapGrid, x: number, y: number): CollisionRes
   void map;
   void x;
   void y;
-  return { blocked: false };
+  return {
+    blocked: false,
+    penetrationDepth: 0,
+    slideVectorX: 0,
+    slideVectorY: 0,
+  };
 }
