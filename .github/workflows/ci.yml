@@ -20,14 +20,28 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20.18.0
-          cache: 'pnpm'
-          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install pnpm
         run: |
           corepack enable
           corepack prepare pnpm@10.19.0 --activate
+          echo "$HOME/.local/share/pnpm" >> "$GITHUB_PATH"
           pnpm --version
+
+      - name: Determine pnpm store path
+        id: pnpm-store
+        run: |
+          STORE_PATH=$(pnpm store path --silent)
+          echo "path=$STORE_PATH" >> "$GITHUB_OUTPUT"
+          echo "PNPM_STORE_PATH=$STORE_PATH" >> "$GITHUB_ENV"
+
+      - name: Restore pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
