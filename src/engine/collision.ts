@@ -1,11 +1,13 @@
-import type { MapGrid } from '../world/mapgen/simple';
+import { TileCollisionFlag, type MapGrid } from '../world/mapgen/simple';
 
 /**
  * Result from collision queries against the map grid.
  */
 export interface CollisionResult {
   blocked: boolean;
-  // TODO: Add additional data such as penetration depth or slide vector.
+  penetrationDepth: number;
+  slideVectorX: number;
+  slideVectorY: number;
 }
 
 /**
@@ -17,9 +19,25 @@ export interface CollisionResult {
  * @returns Collision information for the requested location.
  */
 export function checkCollision(map: MapGrid, x: number, y: number): CollisionResult {
-  // TODO: Inspect map tiles and determine if the position is walkable.
-  void map;
-  void x;
-  void y;
-  return { blocked: false };
+  const width = map.width;
+  const height = map.height;
+
+  if (x < 0 || y < 0 || x >= width || y >= height) {
+    return {
+      blocked: true,
+      penetrationDepth: 0,
+      slideVectorX: 0,
+      slideVectorY: 0,
+    };
+  }
+
+  const tileFlags = map.tiles[y * width + x].flags;
+  const blocked = (tileFlags & TileCollisionFlag.Blocking) !== 0;
+
+  return {
+    blocked,
+    penetrationDepth: 0,
+    slideVectorX: 0,
+    slideVectorY: 0,
+  };
 }

@@ -1,0 +1,364 @@
+/**
+ * @fileoverview Tests coverage for the player movement system registration and runtime behaviour.
+ */
+
+import { describe, expect, it, vi } from 'vitest';
+import { InputManager, type KeyBinding } from '../../input';
+import { World, type ResourceKey } from '../../world';
+import {
+  type ComponentKey,
+  type PlayerComponent,
+  type TransformComponent,
+  type VelocityComponent,
+} from '../../components';
+import {
+  playerMovementSystem,
+  registerPlayerMovementSystem,
+  type PlayerMovementOptions,
+} from '../player-movement';
+import {
+  packTileFlags,
+  TileCollisionFlag,
+  type MapGrid,
+  type Tile,
+} from '../../../world/mapgen/simple';
+
+function createMap(width = 128, height = 128, blockedTiles: Array<[number, number]> = []): MapGrid {
+  const tiles = new Array<Tile>(width * height);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const index = y * width + x;
+      const isBlocked = blockedTiles.some(([bx, by]) => bx === x && by === y);
+      tiles[index] = {
+        type: isBlocked ? 'wall' : 'floor',
+        flags: packTileFlags(
+          isBlocked
+            ? TileCollisionFlag.Blocking | TileCollisionFlag.VisionBlocking
+            : TileCollisionFlag.None,
+          0,
+        ),
+      };
+    }
+  }
+
+  return { width, height, tiles };
+}
+
+describe('registerPlayerMovementSystem', () => {
+  /**
+   * @test Ensures the movement system registration replaces existing options and installs the system.
+   */
+  it('registers the movement system and shared options on the world', () => {
+    const world = new World();
+    const optionsKey = 'system.player-movement.options' as ResourceKey<PlayerMovementOptions>;
+    const initialMap = createMap();
+    const nextMap = createMap();
+    const initialOptions: PlayerMovementOptions = {
+      input: new InputManager(),
+      speedScalar: 1,
+      acceleration: 2,
+      map: initialMap,
+    };
+    const nextOptions: PlayerMovementOptions = {
+      input: new InputManager(),
+      speedScalar: 6,
+      acceleration: 3,
+      map: nextMap,
+    };
+
+    world.registerResource(optionsKey, initialOptions);
+
+    const removeResourceSpy = vi.spyOn(world, 'removeResource');
+    const registerResourceSpy = vi.spyOn(world, 'registerResource');
+    const addSystemSpy = vi.spyOn(world, 'addSystem');
+
+    registerPlayerMovementSystem(world, nextOptions);
+
+    expect(removeResourceSpy).toHaveBeenCalledTimes(1);
+    expect(removeResourceSpy).toHaveBeenCalledWith(optionsKey);
+    // New options must be registered after removing the old resource.
+    expect(registerResourceSpy).toHaveBeenCalledTimes(1);
+    expect(registerResourceSpy).toHaveBeenCalledWith(optionsKey, nextOptions);
+    expect(removeResourceSpy.mock.invocationCallOrder[0]).toBeLessThan(
+      registerResourceSpy.mock.invocationCallOrder[0],
+    );
+    expect(addSystemSpy).toHaveBeenCalledTimes(1);
+    expect(addSystemSpy).toHaveBeenCalledWith(playerMovementSystem);
+    expect(world.getResource(optionsKey)).toBe(nextOptions);
+  });
+});
+
+describe('playerMovementSystem', () => {
+  /**
+   * @test Guards against missing configuration or component stores.
+   */
+  it('exits early when required resources are missing', () => {
+    const world = new World();
+    const optionsKey = 'system.player-movement.options' as ResourceKey<PlayerMovementOptions>;
+    // Minimal deterministic frame context used across tests.
+    const context = {
+      delta: 16,
+      frame: 1,
+      rng: {
+        next: () => 0,
+        nextFloat: () => 0,
+        nextInt: () => 0,
+      },
+    };
+
+    const getResourceSpy = vi.spyOn(world, 'getResource');
+    const getComponentStoreSpy = vi.spyOn(world, 'getComponentStore');
+
+    playerMovementSystem(world, context);
+
+    expect(getResourceSpy).toHaveBeenCalledTimes(1);
+    expect(getResourceSpy).toHaveBeenCalledWith(optionsKey);
+    expect(getComponentStoreSpy).not.toHaveBeenCalled();
+
+    getResourceSpy.mockClear();
+    getComponentStoreSpy.mockClear();
+
+    const options: PlayerMovementOptions = {
+      input: new InputManager(),
+      speedScalar: 1,
+      acceleration: 0,
+      map: createMap(),
+    };
+    world.registerResource(optionsKey, options);
+
+    const heldSpy = vi.spyOn(options.input, 'isHeld');
+    const pressedSpy = vi.spyOn(options.input, 'isPressed');
+
+    playerMovementSystem(world, context);
+
+    expect(getResourceSpy).toHaveBeenCalledTimes(1);
+    expect(getResourceSpy).toHaveBeenCalledWith(optionsKey);
+    expect(getComponentStoreSpy).toHaveBeenCalledTimes(3);
+    expect(heldSpy).not.toHaveBeenCalled();
+    expect(pressedSpy).not.toHaveBeenCalled();
+  });
+
+  /**
+   * @test Applies instantaneous velocity changes when no acceleration limit is provided.
+   */
+  it('applies desired velocity instantly when no acceleration cap is set', () => {
+    const world = new World();
+    const transformKey = 'component.transform' as ComponentKey<TransformComponent>;
+    const velocityKey = 'component.velocity' as ComponentKey<VelocityComponent>;
+    const playerKey = 'component.player' as ComponentKey<PlayerComponent>;
+    const optionsKey = 'system.player-movement.options' as ResourceKey<PlayerMovementOptions>;
+
+    world.registerComponentStore<TransformComponent>(transformKey);
+    world.registerComponentStore<VelocityComponent>(velocityKey);
+    world.registerComponentStore<PlayerComponent>(playerKey);
+
+    const entity = world.createEntity();
+    world.addComponent(entity, transformKey, { x: 0, y: 0 });
+    world.addComponent(entity, velocityKey, { vx: 0, vy: 0 });
+    world.addComponent(entity, playerKey, { name: 'hero' });
+
+    const input = new InputManager();
+    const isHeldSpy = vi
+      .spyOn(input, 'isHeld')
+      .mockImplementation((key: KeyBinding) => key === 'KeyD' || key === 'KeyS');
+    const isPressedSpy = vi.spyOn(input, 'isPressed').mockReturnValue(false);
+
+    const speedScalar = 6;
+    world.registerResource(optionsKey, {
+      input,
+      speedScalar,
+      acceleration: 0,
+      map: createMap(),
+    });
+
+    const context = {
+      delta: 16,
+      frame: 1,
+      rng: {
+        next: () => 0,
+        nextFloat: () => 0,
+        nextInt: () => 0,
+      },
+    };
+
+    playerMovementSystem(world, context);
+
+    const velocity = world.getComponent(entity, velocityKey);
+    if (!velocity) {
+      throw new Error('expected velocity component to be applied');
+    }
+    const expectedVelocity = speedScalar * Math.SQRT1_2;
+
+    expect(velocity.vx).toBeCloseTo(expectedVelocity);
+    expect(velocity.vy).toBeCloseTo(expectedVelocity);
+    // Directional input comes from the held keys; pressed keys are polled for diagonals.
+    expect(isHeldSpy).toHaveBeenCalledWith('KeyD');
+    expect(isHeldSpy).toHaveBeenCalledWith('KeyS');
+    expect(isPressedSpy).toHaveBeenCalledTimes(6);
+    expect(isPressedSpy).toHaveBeenNthCalledWith(1, 'ArrowUp');
+    expect(isPressedSpy).toHaveBeenNthCalledWith(2, 'KeyW');
+    expect(isPressedSpy).toHaveBeenNthCalledWith(3, 'ArrowDown');
+    expect(isPressedSpy).toHaveBeenNthCalledWith(4, 'ArrowLeft');
+    expect(isPressedSpy).toHaveBeenNthCalledWith(5, 'KeyA');
+    expect(isPressedSpy).toHaveBeenNthCalledWith(6, 'ArrowRight');
+  });
+
+  /**
+   * @test Verifies that acceleration limits smooth velocity changes over multiple frames.
+   */
+  it('smooths velocity changes when an acceleration cap is provided', () => {
+    const world = new World();
+    const optionsKey = 'system.player-movement.options' as ResourceKey<PlayerMovementOptions>;
+    const transformKey = 'component.transform' as ComponentKey<TransformComponent>;
+    const velocityKey = 'component.velocity' as ComponentKey<VelocityComponent>;
+    const playerKey = 'component.player' as ComponentKey<PlayerComponent>;
+
+    world.registerComponentStore(transformKey);
+    world.registerComponentStore(velocityKey);
+    world.registerComponentStore(playerKey);
+
+    const player = world.createEntity();
+    world.addComponent(player, transformKey, { x: 0, y: 0 });
+    world.addComponent(player, velocityKey, { vx: 0, vy: 0 });
+    world.addComponent(player, playerKey, { name: 'hero' });
+
+    const input = {
+      isHeld: (key: KeyBinding) => key === 'ArrowRight',
+      isPressed: () => false,
+    } as unknown as InputManager;
+
+    const acceleration = 0.005;
+    world.registerResource(optionsKey, {
+      input,
+      speedScalar: 1,
+      acceleration,
+      map: createMap(),
+    });
+
+    const rng = { next: () => 0, nextFloat: () => 0, nextInt: () => 0 };
+
+    playerMovementSystem(world, { delta: 10, frame: 1, rng });
+
+    const velocityAfterFirst = world.getComponent(player, velocityKey);
+    expect(velocityAfterFirst?.vx).toBeDefined();
+    expect(velocityAfterFirst?.vx).toBeCloseTo(acceleration * 10, 5);
+    expect(velocityAfterFirst?.vy).toBe(0);
+
+    const firstStep = velocityAfterFirst?.vx ?? 0;
+
+    playerMovementSystem(world, { delta: 40, frame: 2, rng });
+
+    const velocityAfterSecond = world.getComponent(player, velocityKey);
+    expect(velocityAfterSecond?.vx).toBeDefined();
+    expect(velocityAfterSecond?.vx).toBeCloseTo(firstStep + acceleration * 40, 5);
+    expect(velocityAfterSecond?.vx).toBeLessThan(1);
+    expect(velocityAfterSecond?.vy).toBe(0);
+  });
+
+  /**
+   * @test Confirms the transform integrates the resolved velocity each frame.
+   */
+  it('updates transform position using the resolved velocity', () => {
+    const world = new World();
+    const optionsKey = 'system.player-movement.options' as ResourceKey<PlayerMovementOptions>;
+    const transformKey = 'component.transform' as ComponentKey<TransformComponent>;
+    const velocityKey = 'component.velocity' as ComponentKey<VelocityComponent>;
+    const playerKey = 'component.player' as ComponentKey<PlayerComponent>;
+
+    world.registerComponentStore(transformKey);
+    world.registerComponentStore(velocityKey);
+    world.registerComponentStore(playerKey);
+
+    const player = world.createEntity();
+    const transform: TransformComponent = { x: 3, y: 7 };
+    const velocity: VelocityComponent = { vx: 0, vy: 0 };
+
+    world.addComponent(player, transformKey, transform);
+    world.addComponent(player, velocityKey, velocity);
+    world.addComponent(player, playerKey, { name: 'hero' });
+
+    const input = {
+      isHeld: (key: KeyBinding) => key === 'KeyD',
+      isPressed: () => false,
+    } as unknown as InputManager;
+
+    const delta = 20;
+    const acceleration = 0.05;
+    const speedScalar = 4;
+
+    world.registerResource(optionsKey, {
+      input,
+      speedScalar,
+      acceleration,
+      map: createMap(),
+    });
+
+    const rng = { next: () => 0, nextFloat: () => 0, nextInt: () => 0 };
+    const startX = transform.x;
+    const startY = transform.y;
+
+    playerMovementSystem(world, { delta, frame: 1, rng });
+
+    const resolvedVelocity = world.getComponent(player, velocityKey);
+    const resolvedTransform = world.getComponent(player, transformKey);
+
+    expect(resolvedVelocity).toBeDefined();
+    expect(resolvedTransform).toBeDefined();
+
+    const expectedVx = acceleration * delta;
+    const expectedX = startX + expectedVx * delta;
+
+    expect(resolvedVelocity?.vx).toBeCloseTo(expectedVx);
+    expect(resolvedVelocity?.vy).toBe(0);
+    // Only horizontal movement is requested, so Y should remain unchanged.
+    expect(resolvedTransform?.x).toBeCloseTo(expectedX);
+    expect(resolvedTransform?.y).toBe(startY);
+  });
+
+  /**
+   * @test Ensures movement is prevented when the destination tile is blocked.
+   */
+  it('halts movement when a blocking tile is encountered', () => {
+    const world = new World();
+    const optionsKey = 'system.player-movement.options' as ResourceKey<PlayerMovementOptions>;
+    const transformKey = 'component.transform' as ComponentKey<TransformComponent>;
+    const velocityKey = 'component.velocity' as ComponentKey<VelocityComponent>;
+    const playerKey = 'component.player' as ComponentKey<PlayerComponent>;
+
+    world.registerComponentStore(transformKey);
+    world.registerComponentStore(velocityKey);
+    world.registerComponentStore(playerKey);
+
+    const player = world.createEntity();
+    const transform: TransformComponent = { x: 0, y: 0 };
+    const velocity: VelocityComponent = { vx: 0, vy: 0 };
+    world.addComponent(player, transformKey, transform);
+    world.addComponent(player, velocityKey, velocity);
+    world.addComponent(player, playerKey, { name: 'hero' });
+
+    const input = {
+      isHeld: (key: KeyBinding) => key === 'KeyD',
+      isPressed: () => false,
+    } as unknown as InputManager;
+
+    const map = createMap(3, 3, [[1, 0]]);
+    world.registerResource(optionsKey, {
+      input,
+      speedScalar: 0.1,
+      acceleration: 0,
+      map,
+    });
+
+    const rng = { next: () => 0, nextFloat: () => 0, nextInt: () => 0 };
+
+    playerMovementSystem(world, { delta: 16, frame: 1, rng });
+
+    const resolvedVelocity = world.getComponent(player, velocityKey);
+    const resolvedTransform = world.getComponent(player, transformKey);
+
+    expect(resolvedTransform?.x).toBe(0);
+    expect(resolvedTransform?.y).toBe(0);
+    expect(resolvedVelocity?.vx).toBe(0);
+    expect(resolvedVelocity?.vy).toBe(0);
+  });
+});
