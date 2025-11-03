@@ -3,7 +3,7 @@ X2. Flesh out canvas bootstrap and render loop in `src/render/bootstrap.ts`, the
 X3. Wire deterministic input handling by finishing `src/engine/input.ts` and hooking it into the main entry.
 X4. Define ECS world basics in `src/engine/world.ts` and populate component management in `src/engine/components.ts`.
 X5. Complete `RunController` logic in `src/engine/run-controller.ts`, including restart and state transitions.
-6. Implement map generation in `src/world/mapgen/simple.ts` and run bootstrapping in `src/world/run-setup.ts`.
+X6. Implement map generation in `src/world/mapgen/simple.ts` and run bootstrapping in `src/world/run-setup.ts`.
 7. Hook up player movement system (`src/engine/systems/player-movement.ts`) with collision checks (`src/engine/collision.ts`).
 8. Build enemy spawn logic and chase AI (`src/combat/enemy.ts`, `src/combat/chase-system.ts`).
 9. Finish melee combat resolution (`src/combat/melee-system.ts`) and connect events to health components.
