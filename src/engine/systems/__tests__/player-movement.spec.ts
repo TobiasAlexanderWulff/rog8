@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Tests coverage for the player movement system registration and runtime behaviour.
+ */
+
 import { describe, expect, it, vi } from 'vitest';
 import { InputManager, type KeyBinding } from '../../input';
 import { World, type ResourceKey } from '../../world';
@@ -14,6 +18,9 @@ import {
 } from '../player-movement';
 
 describe('registerPlayerMovementSystem', () => {
+  /**
+   * @test Ensures the movement system registration replaces existing options and installs the system.
+   */
   it('registers the movement system and shared options on the world', () => {
     const world = new World();
     const optionsKey = 'system.player-movement.options' as ResourceKey<PlayerMovementOptions>;
@@ -38,6 +45,7 @@ describe('registerPlayerMovementSystem', () => {
 
     expect(removeResourceSpy).toHaveBeenCalledTimes(1);
     expect(removeResourceSpy).toHaveBeenCalledWith(optionsKey);
+    // New options must be registered after removing the old resource.
     expect(registerResourceSpy).toHaveBeenCalledTimes(1);
     expect(registerResourceSpy).toHaveBeenCalledWith(optionsKey, nextOptions);
     expect(removeResourceSpy.mock.invocationCallOrder[0]).toBeLessThan(
@@ -50,9 +58,13 @@ describe('registerPlayerMovementSystem', () => {
 });
 
 describe('playerMovementSystem', () => {
+  /**
+   * @test Guards against missing configuration or component stores.
+   */
   it('exits early when required resources are missing', () => {
     const world = new World();
     const optionsKey = 'system.player-movement.options' as ResourceKey<PlayerMovementOptions>;
+    // Minimal deterministic frame context used across tests.
     const context = {
       delta: 16,
       frame: 1,
@@ -94,6 +106,9 @@ describe('playerMovementSystem', () => {
     expect(pressedSpy).not.toHaveBeenCalled();
   });
 
+  /**
+   * @test Applies instantaneous velocity changes when no acceleration limit is provided.
+   */
   it('applies desired velocity instantly when no acceleration cap is set', () => {
     const world = new World();
     const transformKey = 'component.transform' as ComponentKey<TransformComponent>;
@@ -143,6 +158,7 @@ describe('playerMovementSystem', () => {
 
     expect(velocity.vx).toBeCloseTo(expectedVelocity);
     expect(velocity.vy).toBeCloseTo(expectedVelocity);
+    // Directional input comes from the held keys; pressed keys are polled for diagonals.
     expect(isHeldSpy).toHaveBeenCalledWith('KeyD');
     expect(isHeldSpy).toHaveBeenCalledWith('KeyS');
     expect(isPressedSpy).toHaveBeenCalledTimes(6);
@@ -154,6 +170,9 @@ describe('playerMovementSystem', () => {
     expect(isPressedSpy).toHaveBeenNthCalledWith(6, 'ArrowRight');
   });
 
+  /**
+   * @test Verifies that acceleration limits smooth velocity changes over multiple frames.
+   */
   it('smooths velocity changes when an acceleration cap is provided', () => {
     const world = new World();
     const optionsKey = 'system.player-movement.options' as ResourceKey<PlayerMovementOptions>;
@@ -202,6 +221,9 @@ describe('playerMovementSystem', () => {
     expect(velocityAfterSecond?.vy).toBe(0);
   });
 
+  /**
+   * @test Confirms the transform integrates the resolved velocity each frame.
+   */
   it('updates transform position using the resolved velocity', () => {
     const world = new World();
     const optionsKey = 'system.player-movement.options' as ResourceKey<PlayerMovementOptions>;
@@ -253,6 +275,7 @@ describe('playerMovementSystem', () => {
 
     expect(resolvedVelocity?.vx).toBeCloseTo(expectedVx);
     expect(resolvedVelocity?.vy).toBe(0);
+    // Only horizontal movement is requested, so Y should remain unchanged.
     expect(resolvedTransform?.x).toBeCloseTo(expectedX);
     expect(resolvedTransform?.y).toBe(startY);
   });

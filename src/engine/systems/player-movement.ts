@@ -1,3 +1,8 @@
+/**
+ * @fileoverview Provides the player movement ECS system and the registration helper
+ * for wiring it into the game world.
+ */
+
 import type { System, World, ResourceKey } from '../world';
 import type {
   ComponentKey,
@@ -8,7 +13,11 @@ import type {
 import type { InputManager, KeyBinding } from '../input';
 
 /**
- * Configuration shared with the player movement system.
+ * Runtime dependencies for the player movement system.
+ *
+ * @property {InputManager} input Input manager used to query the current keyboard state.
+ * @property {number} speedScalar Maximum velocity magnitude applied to the player.
+ * @property {number} acceleration Rate at which velocity approaches the desired magnitude.
  */
 export interface PlayerMovementOptions {
   input: InputManager;
@@ -28,11 +37,13 @@ const PLAYER_COMPONENT_KEY = 'component.player' as ComponentKey<PlayerComponent>
  *
  * @param world ECS world that manages entities and components.
  * @param options Handles required to read input and adjust velocities.
+ * @returns void
  */
 export const registerPlayerMovementSystem = (
   world: World,
   options: PlayerMovementOptions,
 ): void => {
+  // Always replace stale options so changes take effect immediately.
   world.removeResource(PLAYER_MOVEMENT_OPTIONS_KEY);
   world.registerResource(PLAYER_MOVEMENT_OPTIONS_KEY, options);
   world.addSystem(playerMovementSystem);
@@ -43,10 +54,12 @@ export const registerPlayerMovementSystem = (
  *
  * @param world ECS world to mutate.
  * @param context Frame metadata including RNG and delta time.
+ * @returns void
  */
 export const playerMovementSystem: System = (world, context) => {
   const options = world.getResource(PLAYER_MOVEMENT_OPTIONS_KEY);
   if (!options) {
+    // System is disabled until configured with shared options.
     return;
   }
 
@@ -54,6 +67,7 @@ export const playerMovementSystem: System = (world, context) => {
   const velocityStore = world.getComponentStore(VELOCITY_COMPONENT_KEY);
   const playerStore = world.getComponentStore(PLAYER_COMPONENT_KEY);
   if (!transformStore || !velocityStore || !playerStore) {
+    // Required component stores are not present, so defer until they exist.
     return;
   }
 
@@ -68,6 +82,7 @@ export const playerMovementSystem: System = (world, context) => {
   const hasAccelerationLimit = Number.isFinite(rawStep);
   const maxStep = hasAccelerationLimit ? rawStep : 0;
 
+  // Treat a key as active when either held or freshly pressed this frame.
   const isActive = (key: KeyBinding): boolean => input.isHeld(key) || input.isPressed(key);
 
   const up = isActive('ArrowUp') || isActive('KeyW');
@@ -86,6 +101,7 @@ export const playerMovementSystem: System = (world, context) => {
   }
 
   if (inputX !== 0 && inputY !== 0) {
+    // Maintain consistent speed diagonally by normalising the input vector.
     const normalise = Math.SQRT1_2;
     inputX *= normalise;
     inputY *= normalise;
@@ -106,6 +122,7 @@ export const playerMovementSystem: System = (world, context) => {
           return target;
         }
 
+        // Clamp the delta so acceleration respects the per-frame limit.
         return current + (diff > 0 ? maxStep : -maxStep);
       }
     : (_current: number, target: number): number => target;
@@ -123,6 +140,7 @@ export const playerMovementSystem: System = (world, context) => {
     velocity.vx = nextVx;
     velocity.vy = nextVy;
 
+    // Integrate velocity over the frame to update the transform position.
     transform.x += nextVx * frameDelta;
     transform.y += nextVy * frameDelta;
   }
