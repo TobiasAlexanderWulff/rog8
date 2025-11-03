@@ -23,9 +23,7 @@ jobs:
 
       - name: Install pnpm
         run: |
-          corepack enable
-          corepack prepare pnpm@10.19.0 --activate
-          echo "$HOME/.local/share/pnpm" >> "$GITHUB_PATH"
+          npm install -g pnpm@10.19.0
           pnpm --version
 
       - name: Determine pnpm store path
