@@ -1,9 +1,45 @@
-import { describe, it } from 'vitest';
-import { playerMovementSystem, registerPlayerMovementSystem } from '../player-movement';
+import { describe, expect, it, vi } from 'vitest';
+import { InputManager } from '../../input';
+import { World, type ResourceKey } from '../../world';
+import {
+  playerMovementSystem,
+  registerPlayerMovementSystem,
+  type PlayerMovementOptions,
+} from '../player-movement';
 
 describe('registerPlayerMovementSystem', () => {
   it('registers the movement system and shared options on the world', () => {
-    // TODO: flesh out once a mockable World is available
+    const world = new World();
+    const optionsKey = 'system.player-movement.options' as ResourceKey<PlayerMovementOptions>;
+    const initialOptions: PlayerMovementOptions = {
+      input: new InputManager(),
+      speedScalar: 1,
+      acceleration: 2,
+    };
+    const nextOptions: PlayerMovementOptions = {
+      input: new InputManager(),
+      speedScalar: 6,
+      acceleration: 3,
+    };
+
+    world.registerResource(optionsKey, initialOptions);
+
+    const removeResourceSpy = vi.spyOn(world, 'removeResource');
+    const registerResourceSpy = vi.spyOn(world, 'registerResource');
+    const addSystemSpy = vi.spyOn(world, 'addSystem');
+
+    registerPlayerMovementSystem(world, nextOptions);
+
+    expect(removeResourceSpy).toHaveBeenCalledTimes(1);
+    expect(removeResourceSpy).toHaveBeenCalledWith(optionsKey);
+    expect(registerResourceSpy).toHaveBeenCalledTimes(1);
+    expect(registerResourceSpy).toHaveBeenCalledWith(optionsKey, nextOptions);
+    expect(removeResourceSpy.mock.invocationCallOrder[0]).toBeLessThan(
+      registerResourceSpy.mock.invocationCallOrder[0],
+    );
+    expect(addSystemSpy).toHaveBeenCalledTimes(1);
+    expect(addSystemSpy).toHaveBeenCalledWith(playerMovementSystem);
+    expect(world.getResource(optionsKey)).toBe(nextOptions);
   });
 });
 
