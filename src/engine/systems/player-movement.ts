@@ -11,6 +11,8 @@ import type {
   VelocityComponent,
 } from '../components';
 import type { InputManager, KeyBinding } from '../input';
+import type { MapGrid } from '../../world/mapgen/simple';
+import { checkCollision } from '../collision';
 
 /**
  * Runtime dependencies for the player movement system.
@@ -18,11 +20,13 @@ import type { InputManager, KeyBinding } from '../input';
  * @property {InputManager} input Input manager used to query the current keyboard state.
  * @property {number} speedScalar Maximum velocity magnitude applied to the player.
  * @property {number} acceleration Rate at which velocity approaches the desired magnitude.
+ * @property {MapGrid} map Tile grid used to resolve collision against blocking tiles.
  */
 export interface PlayerMovementOptions {
   input: InputManager;
   speedScalar: number;
   acceleration: number;
+  map: MapGrid;
 }
 
 const PLAYER_MOVEMENT_OPTIONS_KEY =
@@ -76,7 +80,7 @@ export const playerMovementSystem: System = (world, context) => {
     return;
   }
 
-  const { input, speedScalar, acceleration } = options;
+  const { input, speedScalar, acceleration, map } = options;
   const frameDelta = context.delta;
   const rawStep = acceleration > 0 ? acceleration * frameDelta : Number.POSITIVE_INFINITY;
   const hasAccelerationLimit = Number.isFinite(rawStep);
@@ -140,8 +144,34 @@ export const playerMovementSystem: System = (world, context) => {
     velocity.vx = nextVx;
     velocity.vy = nextVy;
 
-    // Integrate velocity over the frame to update the transform position.
-    transform.x += nextVx * frameDelta;
-    transform.y += nextVy * frameDelta;
+    let resolvedX = transform.x;
+    let resolvedY = transform.y;
+
+    if (nextVx !== 0) {
+      const candidateX = resolvedX + nextVx * frameDelta;
+      const tileX = Math.floor(candidateX);
+      const tileY = Math.floor(resolvedY);
+      const collision = checkCollision(map, tileX, tileY);
+      if (collision.blocked) {
+        velocity.vx = 0;
+      } else {
+        resolvedX = candidateX;
+      }
+    }
+
+    if (nextVy !== 0) {
+      const candidateY = resolvedY + nextVy * frameDelta;
+      const tileX = Math.floor(resolvedX);
+      const tileY = Math.floor(candidateY);
+      const collision = checkCollision(map, tileX, tileY);
+      if (collision.blocked) {
+        velocity.vy = 0;
+      } else {
+        resolvedY = candidateY;
+      }
+    }
+
+    transform.x = resolvedX;
+    transform.y = resolvedY;
   }
 };

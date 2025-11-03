@@ -16,6 +16,33 @@ import {
   registerPlayerMovementSystem,
   type PlayerMovementOptions,
 } from '../player-movement';
+import {
+  packTileFlags,
+  TileCollisionFlag,
+  type MapGrid,
+  type Tile,
+} from '../../../world/mapgen/simple';
+
+function createMap(width = 128, height = 128, blockedTiles: Array<[number, number]> = []): MapGrid {
+  const tiles = new Array<Tile>(width * height);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const index = y * width + x;
+      const isBlocked = blockedTiles.some(([bx, by]) => bx === x && by === y);
+      tiles[index] = {
+        type: isBlocked ? 'wall' : 'floor',
+        flags: packTileFlags(
+          isBlocked
+            ? TileCollisionFlag.Blocking | TileCollisionFlag.VisionBlocking
+            : TileCollisionFlag.None,
+          0,
+        ),
+      };
+    }
+  }
+
+  return { width, height, tiles };
+}
 
 describe('registerPlayerMovementSystem', () => {
   /**
@@ -24,15 +51,19 @@ describe('registerPlayerMovementSystem', () => {
   it('registers the movement system and shared options on the world', () => {
     const world = new World();
     const optionsKey = 'system.player-movement.options' as ResourceKey<PlayerMovementOptions>;
+    const initialMap = createMap();
+    const nextMap = createMap();
     const initialOptions: PlayerMovementOptions = {
       input: new InputManager(),
       speedScalar: 1,
       acceleration: 2,
+      map: initialMap,
     };
     const nextOptions: PlayerMovementOptions = {
       input: new InputManager(),
       speedScalar: 6,
       acceleration: 3,
+      map: nextMap,
     };
 
     world.registerResource(optionsKey, initialOptions);
@@ -91,6 +122,7 @@ describe('playerMovementSystem', () => {
       input: new InputManager(),
       speedScalar: 1,
       acceleration: 0,
+      map: createMap(),
     };
     world.registerResource(optionsKey, options);
 
@@ -136,6 +168,7 @@ describe('playerMovementSystem', () => {
       input,
       speedScalar,
       acceleration: 0,
+      map: createMap(),
     });
 
     const context = {
@@ -199,6 +232,7 @@ describe('playerMovementSystem', () => {
       input,
       speedScalar: 1,
       acceleration,
+      map: createMap(),
     });
 
     const rng = { next: () => 0, nextFloat: () => 0, nextInt: () => 0 };
@@ -256,6 +290,7 @@ describe('playerMovementSystem', () => {
       input,
       speedScalar,
       acceleration,
+      map: createMap(),
     });
 
     const rng = { next: () => 0, nextFloat: () => 0, nextInt: () => 0 };
@@ -278,5 +313,52 @@ describe('playerMovementSystem', () => {
     // Only horizontal movement is requested, so Y should remain unchanged.
     expect(resolvedTransform?.x).toBeCloseTo(expectedX);
     expect(resolvedTransform?.y).toBe(startY);
+  });
+
+  /**
+   * @test Ensures movement is prevented when the destination tile is blocked.
+   */
+  it('halts movement when a blocking tile is encountered', () => {
+    const world = new World();
+    const optionsKey = 'system.player-movement.options' as ResourceKey<PlayerMovementOptions>;
+    const transformKey = 'component.transform' as ComponentKey<TransformComponent>;
+    const velocityKey = 'component.velocity' as ComponentKey<VelocityComponent>;
+    const playerKey = 'component.player' as ComponentKey<PlayerComponent>;
+
+    world.registerComponentStore(transformKey);
+    world.registerComponentStore(velocityKey);
+    world.registerComponentStore(playerKey);
+
+    const player = world.createEntity();
+    const transform: TransformComponent = { x: 0, y: 0 };
+    const velocity: VelocityComponent = { vx: 0, vy: 0 };
+    world.addComponent(player, transformKey, transform);
+    world.addComponent(player, velocityKey, velocity);
+    world.addComponent(player, playerKey, { name: 'hero' });
+
+    const input = {
+      isHeld: (key: KeyBinding) => key === 'KeyD',
+      isPressed: () => false,
+    } as unknown as InputManager;
+
+    const map = createMap(3, 3, [[1, 0]]);
+    world.registerResource(optionsKey, {
+      input,
+      speedScalar: 0.1,
+      acceleration: 0,
+      map,
+    });
+
+    const rng = { next: () => 0, nextFloat: () => 0, nextInt: () => 0 };
+
+    playerMovementSystem(world, { delta: 16, frame: 1, rng });
+
+    const resolvedVelocity = world.getComponent(player, velocityKey);
+    const resolvedTransform = world.getComponent(player, transformKey);
+
+    expect(resolvedTransform?.x).toBe(0);
+    expect(resolvedTransform?.y).toBe(0);
+    expect(resolvedVelocity?.vx).toBe(0);
+    expect(resolvedVelocity?.vy).toBe(0);
   });
 });
