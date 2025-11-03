@@ -205,6 +205,9 @@ export class World {
    * @param system System callback to register.
    */
   addSystem(system: System): void {
+    if (this.systems.includes(system)) {
+      return;
+    }
     this.systems.push(system);
   }
 
