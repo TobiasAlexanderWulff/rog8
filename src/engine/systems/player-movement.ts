@@ -8,7 +8,8 @@ import type { InputManager } from '../input';
  */
 export interface PlayerMovementOptions {
   input: InputManager;
-  // TODO: Add movement speed scalar or acceleration values.
+  speedScalar: number;
+  acceleration: number;
 }
 
 /**
