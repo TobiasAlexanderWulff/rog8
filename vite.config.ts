@@ -27,6 +27,7 @@ export default defineConfig({
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     setupFiles: ['src/shared/setup-parse5.ts'],
     pool: 'threads',
+    globalSetup: ['src/shared/vitest-global-setup.ts'],
     coverage: {
       provider: 'v8',
       reportsDirectory: 'coverage',
