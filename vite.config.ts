@@ -25,6 +25,7 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    setupFiles: ['src/shared/setup-parse5.ts'],
     pool: 'forks',
     coverage: {
       provider: 'v8',
