@@ -1,8 +1,7 @@
-/** @vitest-environment jsdom */
 /**
  * @fileoverview Render bootstrap tests.
  */
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   bootstrapCanvas,
@@ -11,16 +10,28 @@ import {
   type RenderContext,
 } from '../bootstrap';
 import { withSeed, type RunSeed } from '../../shared/random';
+import { setupBrowserEnv } from '../../shared/testing/setup-browser-env';
+
+let cleanup: (() => void) | undefined;
+
+beforeEach(async () => {
+  const env = await setupBrowserEnv();
+  cleanup = env.cleanup;
+});
+
+afterEach(() => {
+  cleanup?.();
+  cleanup = undefined;
+  vi.restoreAllMocks();
+  if (typeof document !== 'undefined') {
+    document.body.innerHTML = '';
+  }
+});
 
 /**
  * Suite for bootstrapCanvas.
  */
 describe('bootstrapCanvas', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-    document.body.innerHTML = '';
-  });
-
   it('bootstraps a canvas element into the requested root', () => {
     document.body.innerHTML = '';
 

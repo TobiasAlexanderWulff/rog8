@@ -1,16 +1,29 @@
-/** @vitest-environment jsdom */
 /**
  * @fileoverview src/engine/input.ts test coverage.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InputManager } from '../input';
+import { setupBrowserEnv } from '../../shared/testing/setup-browser-env';
 
 /**
  * Exercises the InputManager lifecycle for DOM event binding and frame tracking.
  */
 
 describe('InputManager', () => {
+  let cleanup: (() => void) | undefined;
+
+  beforeEach(async () => {
+    const env = await setupBrowserEnv();
+    cleanup = env.cleanup;
+  });
+
+  afterEach(() => {
+    cleanup?.();
+    cleanup = undefined;
+    vi.restoreAllMocks();
+  });
+
   /**
    * Verifies that constructing the manager in a browser context wires keyboard and visibility listeners.
    */

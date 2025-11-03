@@ -2,6 +2,19 @@ import { fileURLToPath, URL } from 'node:url';
 
 import { defineConfig } from 'vitest/config';
 
+const testConfig: Record<string, unknown> = {
+  environment: 'node',
+  globals: true,
+  include: ['src/**/*.{test,spec}.{ts,tsx}'],
+  setupFiles: ['src/shared/setup-parse5.ts'],
+  pool: 'threads',
+  globalSetup: ['src/shared/vitest-global-setup.ts'],
+  coverage: {
+    provider: 'v8',
+    reportsDirectory: 'coverage',
+  },
+};
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -21,16 +34,5 @@ export default defineConfig({
     target: 'es2022',
     outDir: 'dist',
   },
-  test: {
-    environment: 'node',
-    globals: true,
-    include: ['src/**/*.{test,spec}.{ts,tsx}'],
-    setupFiles: ['src/shared/setup-parse5.ts'],
-    pool: 'threads',
-    globalSetup: ['src/shared/vitest-global-setup.ts'],
-    coverage: {
-      provider: 'v8',
-      reportsDirectory: 'coverage',
-    },
-  },
+  test: testConfig,
 });
