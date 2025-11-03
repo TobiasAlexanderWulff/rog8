@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import type { System, World, TickContext } from '../world';
+import type { System, World, TickContext, ResourceKey } from '../world';
 import type { InputManager } from '../input';
 
 /**
@@ -12,6 +12,9 @@ export interface PlayerMovementOptions {
   acceleration: number;
 }
 
+const PLAYER_MOVEMENT_OPTIONS_KEY =
+  'system.player-movement.options' as ResourceKey<PlayerMovementOptions>;
+
 /**
  * Installs the player movement system with the provided configuration.
  *
@@ -22,9 +25,9 @@ export const registerPlayerMovementSystem = (
   world: World,
   options: PlayerMovementOptions,
 ): void => {
-  // TODO: Store options and link the movement system into the ECS.
-  void world;
-  void options;
+  world.removeResource(PLAYER_MOVEMENT_OPTIONS_KEY);
+  world.registerResource(PLAYER_MOVEMENT_OPTIONS_KEY, options);
+  world.addSystem(playerMovementSystem);
 };
 
 /**
