@@ -52,7 +52,9 @@ export function createEnemyComponent(archetype: EnemyArchetype): EnemyComponent 
 export interface ChaseAIComponent {
   targetEntityId: number | null;
   aggroRadius: number;
-  // TODO: Track pathfinding state or movement speed modifiers.
+  path: { x: number; y: number }[];
+  currentPathIndex: number;
+  speedMultiplier: number;
 }
 
 /**
