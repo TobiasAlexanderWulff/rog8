@@ -8,7 +8,7 @@ import type {
   TransformComponent,
   VelocityComponent,
 } from './components';
-import type { EnemyComponent } from '../combat/enemy';
+import { createEnemyComponent, type EnemyComponent } from '../combat/enemy';
 import { InputManager } from './input';
 
 export type RunState = 'init' | 'playing' | 'game-over';
@@ -91,9 +91,13 @@ export class RunController {
     this.world.addComponent(player, RunController.PLAYER_COMPONENT_KEY, { name: 'Player' });
 
     const enemy = this.world.createEntity();
+    const enemyComponent = createEnemyComponent('grunt');
     this.world.addComponent(enemy, RunController.TRANSFORM_COMPONENT_KEY, { x: 5, y: 5 });
-    this.world.addComponent(enemy, RunController.HEALTH_COMPONENT_KEY, { current: 1, max: 1 });
-    this.world.addComponent(enemy, RunController.ENEMY_COMPONENT_KEY, { archetype: 'grunt' });
+    this.world.addComponent(enemy, RunController.HEALTH_COMPONENT_KEY, {
+      current: enemyComponent.maxHp,
+      max: enemyComponent.maxHp,
+    });
+    this.world.addComponent(enemy, RunController.ENEMY_COMPONENT_KEY, enemyComponent);
 
     this.state = 'playing';
   }

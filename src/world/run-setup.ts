@@ -6,7 +6,7 @@ import type {
   TransformComponent,
   VelocityComponent,
 } from '../engine/components';
-import type { EnemyComponent } from '../combat/enemy';
+import { createEnemyComponent, type EnemyComponent } from '../combat/enemy';
 import { createMulberry32, type RunSeed } from '../shared/random';
 import { generateSimpleMap, type GeneratedMap } from './mapgen/simple';
 
@@ -17,7 +17,6 @@ const PLAYER_COMPONENT_KEY = 'component.player' as ComponentKey<PlayerComponent>
 const ENEMY_COMPONENT_KEY = 'component.enemy' as ComponentKey<EnemyComponent>;
 
 const PLAYER_STARTING_HEALTH = 5;
-const ENEMY_STARTING_HEALTH = 1;
 
 /**
  * Output produced when a new run is initialised.
@@ -66,12 +65,13 @@ export function bootstrapRun(world: World, seed: RunSeed): RunBootstrapResult {
 
   const enemyEntityIds = map.metadata.enemySpawns.map((spawn) => {
     const enemy = world.createEntity();
+    const enemyComponent = createEnemyComponent('grunt');
     world.addComponent(enemy, TRANSFORM_COMPONENT_KEY, { x: spawn.x, y: spawn.y });
     world.addComponent(enemy, HEALTH_COMPONENT_KEY, {
-      current: ENEMY_STARTING_HEALTH,
-      max: ENEMY_STARTING_HEALTH,
+      current: enemyComponent.maxHp,
+      max: enemyComponent.maxHp,
     });
-    world.addComponent(enemy, ENEMY_COMPONENT_KEY, { archetype: 'grunt' });
+    world.addComponent(enemy, ENEMY_COMPONENT_KEY, enemyComponent);
     return enemy.id;
   });
 

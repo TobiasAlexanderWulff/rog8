@@ -3,12 +3,40 @@
  */
 export type EnemyArchetype = 'grunt' | 'placeholder';
 
+export interface EnemyCombatStats {
+  maxHp: number;
+  speed: number;
+  damage: number;
+}
+
+const ARCHETYPE_STATS: Record<EnemyArchetype, EnemyCombatStats> = {
+  grunt: {
+    maxHp: 1,
+    speed: 1.5,
+    damage: 1,
+  },
+  placeholder: {
+    maxHp: 1,
+    speed: 1,
+    damage: 0,
+  },
+};
+
 /**
  * Component attached to enemy entities describing their archetype.
  */
-export interface EnemyComponent {
+export interface EnemyComponent extends EnemyCombatStats {
   archetype: EnemyArchetype;
-  // TODO: Add combat stats (HP, speed, damage) once tuning begins.
+}
+
+export function createEnemyComponent(archetype: EnemyArchetype): EnemyComponent {
+  const stats = ARCHETYPE_STATS[archetype];
+  return {
+    archetype,
+    maxHp: stats.maxHp,
+    speed: stats.speed,
+    damage: stats.damage,
+  };
 }
 
 /**
