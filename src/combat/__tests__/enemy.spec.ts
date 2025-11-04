@@ -7,18 +7,34 @@ import { createEnemyComponent, spawnEnemy } from '../enemy';
 
 describe('createEnemyComponent', () => {
   it('creates combat stats for grunt archetype', () => {
-    // TODO: flesh out grunt archetype stat assertions
-    expect(createEnemyComponent).toBeDefined();
+    const component = createEnemyComponent('grunt');
+
+    expect(component.archetype).toBe('grunt');
+    expect(component.maxHp).toBe(1);
+    expect(component.speed).toBe(1.5);
+    expect(component.damage).toBe(1);
   });
 
   it('creates combat stats for placeholder archetype', () => {
-    // TODO: validate placeholder archetype stat mapping
-    expect(createEnemyComponent).toBeDefined();
+    const component = createEnemyComponent('placeholder');
+
+    expect(component.archetype).toBe('placeholder');
+    expect(component.maxHp).toBe(1);
+    expect(component.speed).toBe(1);
+    expect(component.damage).toBe(0);
   });
 
   it('produces isolated component instances per spawn', () => {
-    // TODO: ensure returned components are not shared across entities
-    expect(createEnemyComponent).toBeDefined();
+    const first = createEnemyComponent('grunt');
+    const second = createEnemyComponent('grunt');
+
+    expect(first).not.toBe(second);
+
+    first.maxHp = 42;
+    first.damage = 7;
+
+    expect(second.maxHp).toBe(1);
+    expect(second.damage).toBe(1);
   });
 });
 
