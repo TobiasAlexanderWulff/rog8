@@ -1,4 +1,4 @@
-import type { World } from '../engine/world';
+import type { World, ResourceKey } from '../engine/world';
 import type {
   ComponentKey,
   HealthComponent,
@@ -8,13 +8,14 @@ import type {
 } from '../engine/components';
 import { createEnemyComponent, type EnemyComponent } from '../combat/enemy';
 import { createMulberry32, type RunSeed } from '../shared/random';
-import { generateSimpleMap, type GeneratedMap } from './mapgen/simple';
+import { generateSimpleMap, type GeneratedMap, type MapGrid } from './mapgen/simple';
 
 const TRANSFORM_COMPONENT_KEY = 'component.transform' as ComponentKey<TransformComponent>;
 const VELOCITY_COMPONENT_KEY = 'component.velocity' as ComponentKey<VelocityComponent>;
 const HEALTH_COMPONENT_KEY = 'component.health' as ComponentKey<HealthComponent>;
 const PLAYER_COMPONENT_KEY = 'component.player' as ComponentKey<PlayerComponent>;
 const ENEMY_COMPONENT_KEY = 'component.enemy' as ComponentKey<EnemyComponent>;
+const MAP_GRID_RESOURCE_KEY = 'resource.map-grid' as ResourceKey<MapGrid>;
 
 const PLAYER_STARTING_HEALTH = 5;
 
@@ -74,6 +75,9 @@ export function bootstrapRun(world: World, seed: RunSeed): RunBootstrapResult {
     world.addComponent(enemy, ENEMY_COMPONENT_KEY, enemyComponent);
     return enemy.id;
   });
+
+  world.removeResource(MAP_GRID_RESOURCE_KEY);
+  world.registerResource(MAP_GRID_RESOURCE_KEY, map.grid);
 
   return {
     map,
