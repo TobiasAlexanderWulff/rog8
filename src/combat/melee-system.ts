@@ -1,7 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 import type { System, World, TickContext, ResourceKey } from '../engine/world';
-import type { ComponentKey, HealthComponent } from '../engine/components';
+import type { ComponentKey, HealthComponent, VelocityComponent } from '../engine/components';
 import type { EnemyComponent } from './enemy';
 
 /**
@@ -28,6 +26,7 @@ const MELEE_ATTACK_DISPATCH_KEY = 'system.melee.dispatch-attack' as ResourceKey<
 >;
 const HEALTH_COMPONENT_KEY = 'component.health' as ComponentKey<HealthComponent>;
 const ENEMY_COMPONENT_KEY = 'component.enemy' as ComponentKey<EnemyComponent>;
+const VELOCITY_COMPONENT_KEY = 'component.velocity' as ComponentKey<VelocityComponent>;
 const DEFAULT_MELEE_DAMAGE = 1;
 
 /**
@@ -104,6 +103,7 @@ export const meleeSystem: System = (world, context) => {
   }
 
   const enemyStore = world.getComponentStore(ENEMY_COMPONENT_KEY);
+  const velocityStore = world.getComponentStore(VELOCITY_COMPONENT_KEY);
 
   for (let i = 0; i < queue.length; i += 1) {
     const attack = queue[i];
@@ -135,6 +135,28 @@ export const meleeSystem: System = (world, context) => {
 
     const nextHealth = targetHealth.current - damage;
     targetHealth.current = nextHealth > 0 ? nextHealth : 0;
+
+    const knockback = attack.knockback;
+    if (!knockback || !velocityStore) {
+      continue;
+    }
+
+    const targetVelocity = velocityStore.get(attack.targetId);
+    if (!targetVelocity) {
+      continue;
+    }
+
+    const directionX = Number.isFinite(knockback.directionX) ? knockback.directionX : 0;
+    const directionY = Number.isFinite(knockback.directionY) ? knockback.directionY : 0;
+    const magnitude =
+      Number.isFinite(knockback.magnitude) && knockback.magnitude > 0 ? knockback.magnitude : 0;
+
+    if (magnitude === 0 || (directionX === 0 && directionY === 0)) {
+      continue;
+    }
+
+    targetVelocity.vx += directionX * magnitude;
+    targetVelocity.vy += directionY * magnitude;
   }
 
   queue.length = 0;
