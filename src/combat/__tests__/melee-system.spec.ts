@@ -13,6 +13,11 @@ const HEALTH_COMPONENT_KEY = 'component.health' as ComponentKey<HealthComponent>
 const ENEMY_COMPONENT_KEY = 'component.enemy' as ComponentKey<EnemyComponent>;
 const VELOCITY_COMPONENT_KEY = 'component.velocity' as ComponentKey<VelocityComponent>;
 
+/**
+ * Creates a deterministic tick context for resolving combat systems.
+ *
+ * @returns {TickContext} Fixed-timestep context with inert RNG for reproducible tests.
+ */
 const createTickContext = (): TickContext => ({
   delta: 16,
   frame: 0,
@@ -64,6 +69,7 @@ describe('melee-system', () => {
     expect(dispatch).not.toBe(previousDispatch);
     expect(typeof dispatch).toBe('function');
 
+    // Dispatch should sanitize payloads before they reach the queue.
     dispatch({ attackerId: 4.8, targetId: 7.2, damage: -5 });
     expect(queue).toHaveLength(1);
     expect(queue[0]).toMatchObject({
@@ -83,7 +89,7 @@ describe('melee-system', () => {
       current: 5,
       max: 5,
     });
-    const initialVelocity = { vx: 0.25, vy: -0.1 };
+    const initialVelocity = { vx: 0.25, vy: -0.1 }; // Baseline velocity to confirm knockback math.
     world.addComponent(target, VELOCITY_COMPONENT_KEY, { ...initialVelocity });
 
     const queue = world.getResource(MELEE_ATTACK_QUEUE_KEY);
@@ -142,7 +148,7 @@ describe('melee-system', () => {
     queue.push({
       attackerId: attacker.id,
       targetId: target.id,
-      damage: 0,
+      damage: 0, // Invalid event damage should trigger fallback to enemy damage.
     });
 
     meleeSystem(world, createTickContext());

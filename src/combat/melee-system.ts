@@ -3,7 +3,11 @@ import type { ComponentKey, HealthComponent, VelocityComponent } from '../engine
 import type { EnemyComponent } from './enemy';
 
 /**
- * Payload representing a melee attack that should be resolved.
+ * Snapshot of the impulse applied to a target after a melee hit.
+ *
+ * @property {number} directionX Unit-length x component; sanitized to 0 when invalid.
+ * @property {number} directionY Unit-length y component; sanitized to 0 when invalid.
+ * @property {number} magnitude Force multiplier applied along the direction vector.
  */
 export interface KnockbackImpulse {
   directionX: number;
@@ -11,6 +15,14 @@ export interface KnockbackImpulse {
   magnitude: number;
 }
 
+/**
+ * Event describing an attacker striking a target.
+ *
+ * @property {number} attackerId Entity identifier for the aggressor.
+ * @property {number} targetId Entity identifier for the victim.
+ * @property {number} damage Requested damage; sanitized before resolution.
+ * @property {KnockbackImpulse} [knockback] Optional impulse applied when supplied.
+ */
 export interface MeleeAttackEvent {
   attackerId: number;
   targetId: number;
@@ -30,9 +42,13 @@ const VELOCITY_COMPONENT_KEY = 'component.velocity' as ComponentKey<VelocityComp
 const DEFAULT_MELEE_DAMAGE = 1;
 
 /**
- * Installs the melee system into the provided world instance.
+ * Installs the melee combat system on the provided world instance.
  *
- * @param world ECS world that hosts systems and components.
+ * The function ensures a shared queue resource exists, clears stale events, and
+ * registers a dispatch callback that sanitizes attack payloads before enqueueing.
+ *
+ * @param {World} world ECS world that hosts systems and components.
+ * @returns {void}
  */
 export const registerMeleeSystem = (world: World): void => {
   const existingQueue = world.getResource(MELEE_ATTACK_QUEUE_KEY);
@@ -79,16 +95,20 @@ export const registerMeleeSystem = (world: World): void => {
     });
   };
 
-  world.removeResource(MELEE_ATTACK_DISPATCH_KEY);
+  world.removeResource(MELEE_ATTACK_DISPATCH_KEY); // Replace any stale dispatcher from previous runs.
   world.registerResource(MELEE_ATTACK_DISPATCH_KEY, dispatchAttack);
   world.addSystem(meleeSystem);
 };
 
 /**
- * Resolves outstanding melee attack events and updates combat state.
+ * Resolves queued melee attack events and updates combat state.
  *
- * @param world ECS world being updated.
- * @param context Frame metadata including delta and RNG.
+ * The system applies damage, enforces enemy damage overrides, mutates target
+ * velocities when knockback is present, and finally drains the queue.
+ *
+ * @param {World} world ECS world being updated.
+ * @param {TickContext} context Frame metadata including delta and RNG.
+ * @returns {void}
  */
 export const meleeSystem: System = (world, context) => {
   const queue = world.getResource(MELEE_ATTACK_QUEUE_KEY);
