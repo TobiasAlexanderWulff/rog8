@@ -14,7 +14,7 @@ import type {
   TransformComponent,
   VelocityComponent,
 } from '../components';
-import type { EnemyComponent } from '../../combat/enemy';
+import { createEnemyComponent, type EnemyComponent } from '../../combat/enemy';
 
 describe('RunController', () => {
   /**
@@ -68,7 +68,7 @@ describe('RunController', () => {
     const enemyId = 2;
     expect(world.getComponent(enemyId, transformKey)).toEqual({ x: 5, y: 5 });
     expect(world.getComponent(enemyId, healthKey)).toEqual({ current: 1, max: 1 });
-    expect(world.getComponent(enemyId, enemyKey)).toEqual({ archetype: 'grunt' });
+    expect(world.getComponent(enemyId, enemyKey)).toEqual(createEnemyComponent('grunt'));
   });
 
   it('ignores subsequent start calls after entering the playing state', () => {
