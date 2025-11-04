@@ -1,6 +1,6 @@
 import { checkCollision } from '../engine/collision';
 import type { ComponentKey, TransformComponent } from '../engine/components';
-import type { System, World, ResourceKey, TickContext } from '../engine/world';
+import type { System, World, ResourceKey } from '../engine/world';
 import type { MapGrid } from '../world/mapgen/simple';
 import type { ChaseAIComponent, EnemyComponent } from './enemy';
 
