@@ -7,10 +7,17 @@ import type { EnemyComponent } from './enemy';
 /**
  * Payload representing a melee attack that should be resolved.
  */
+export interface KnockbackImpulse {
+  directionX: number;
+  directionY: number;
+  magnitude: number;
+}
+
 export interface MeleeAttackEvent {
   attackerId: number;
   targetId: number;
-  // TODO: Include damage value and knockback details when combat math is defined.
+  damage: number;
+  knockback?: KnockbackImpulse;
 }
 
 export const MELEE_COOLDOWN_MS = 250; // TODO: Tune cooldown once playtests exist.
@@ -48,9 +55,28 @@ export const registerMeleeSystem = (world: World): void => {
       return;
     }
 
+    const rawDamage = event.damage;
+    const damage = Number.isFinite(rawDamage) && rawDamage > 0 ? rawDamage : DEFAULT_MELEE_DAMAGE;
+    let knockback: KnockbackImpulse | undefined;
+    if (event.knockback) {
+      const { directionX, directionY, magnitude } = event.knockback;
+      const dx = Number.isFinite(directionX) ? directionX : 0;
+      const dy = Number.isFinite(directionY) ? directionY : 0;
+      const force = Number.isFinite(magnitude) && magnitude > 0 ? magnitude : 0;
+      if (dx !== 0 || dy !== 0 || force !== 0) {
+        knockback = {
+          directionX: dx,
+          directionY: dy,
+          magnitude: force,
+        };
+      }
+    }
+
     attackQueue.push({
       attackerId: Math.trunc(attackerId),
       targetId: Math.trunc(targetId),
+      damage,
+      knockback,
     });
   };
 
@@ -91,10 +117,18 @@ export const meleeSystem: System = (world, context) => {
     }
 
     let damage = DEFAULT_MELEE_DAMAGE;
+    if (Number.isFinite(attack.damage) && attack.damage > 0) {
+      damage = attack.damage;
+    }
+
     const enemy = enemyStore?.get(attack.attackerId);
     if (enemy) {
       const enemyDamage = enemy.damage;
-      if (Number.isFinite(enemyDamage) && enemyDamage > 0) {
+      if (!Number.isFinite(attack.damage) || attack.damage <= 0) {
+        if (Number.isFinite(enemyDamage) && enemyDamage > 0) {
+          damage = enemyDamage;
+        }
+      } else if (Number.isFinite(enemyDamage) && enemyDamage > damage) {
         damage = enemyDamage;
       }
     }
