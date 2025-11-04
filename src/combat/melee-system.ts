@@ -16,6 +16,9 @@ export interface MeleeAttackEvent {
 export const MELEE_COOLDOWN_MS = 250; // TODO: Tune cooldown once playtests exist.
 
 const MELEE_ATTACK_QUEUE_KEY = 'system.melee.attack-queue' as ResourceKey<MeleeAttackEvent[]>;
+const MELEE_ATTACK_DISPATCH_KEY = 'system.melee.dispatch-attack' as ResourceKey<
+  (event: MeleeAttackEvent) => void
+>;
 const HEALTH_COMPONENT_KEY = 'component.health' as ComponentKey<HealthComponent>;
 const ENEMY_COMPONENT_KEY = 'component.enemy' as ComponentKey<EnemyComponent>;
 const DEFAULT_MELEE_DAMAGE = 1;
@@ -26,8 +29,34 @@ const DEFAULT_MELEE_DAMAGE = 1;
  * @param world ECS world that hosts systems and components.
  */
 export const registerMeleeSystem = (world: World): void => {
-  // TODO: Register melee combat update loop and event routing.
-  void world;
+  const existingQueue = world.getResource(MELEE_ATTACK_QUEUE_KEY);
+  if (existingQueue && !Array.isArray(existingQueue)) {
+    throw new Error('Melee attack queue resource must be an array.');
+  }
+
+  const attackQueue: MeleeAttackEvent[] = existingQueue ?? [];
+  if (!existingQueue) {
+    world.registerResource(MELEE_ATTACK_QUEUE_KEY, attackQueue);
+  } else if (attackQueue.length !== 0) {
+    attackQueue.length = 0;
+  }
+
+  const dispatchAttack = (event: MeleeAttackEvent): void => {
+    const attackerId = event.attackerId;
+    const targetId = event.targetId;
+    if (!Number.isFinite(attackerId) || !Number.isFinite(targetId)) {
+      return;
+    }
+
+    attackQueue.push({
+      attackerId: Math.trunc(attackerId),
+      targetId: Math.trunc(targetId),
+    });
+  };
+
+  world.removeResource(MELEE_ATTACK_DISPATCH_KEY);
+  world.registerResource(MELEE_ATTACK_DISPATCH_KEY, dispatchAttack);
+  world.addSystem(meleeSystem);
 };
 
 /**
