@@ -8,7 +8,7 @@ const ENEMY_COMPONENT_KEY = 'component.enemy' as ComponentKey<EnemyComponent>;
 /**
  * Supported enemy archetypes that drive spawn behaviour and stats.
  */
-export type EnemyArchetype = 'grunt' | 'placeholder';
+export type EnemyArchetype = 'grunt' | 'brute' | 'placeholder';
 
 export interface EnemyCombatStats {
   maxHp: number;
@@ -21,6 +21,11 @@ const ARCHETYPE_STATS: Record<EnemyArchetype, EnemyCombatStats> = {
     maxHp: 1,
     speed: 1.5,
     damage: 1,
+  },
+  brute: {
+    maxHp: 12,
+    speed: 0.75,
+    damage: 7,
   },
   placeholder: {
     maxHp: 1,
