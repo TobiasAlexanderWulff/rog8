@@ -8,8 +8,7 @@ import type { System, World, TickContext } from '../engine/world';
  * @param world ECS world that should host the system.
  */
 export const registerChaseSystem = (world: World): void => {
-  // TODO: Register chase AI system against the world once ECS wiring exists.
-  void world;
+  world.addSystem(chaseSystem);
 };
 
 /**
