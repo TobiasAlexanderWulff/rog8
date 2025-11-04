@@ -1,3 +1,10 @@
+import type { World } from '../engine/world';
+import type { ComponentKey, TransformComponent, HealthComponent } from '../engine/components';
+
+const TRANSFORM_COMPONENT_KEY = 'component.transform' as ComponentKey<TransformComponent>;
+const HEALTH_COMPONENT_KEY = 'component.health' as ComponentKey<HealthComponent>;
+const ENEMY_COMPONENT_KEY = 'component.enemy' as ComponentKey<EnemyComponent>;
+
 /**
  * Supported enemy archetypes that drive spawn behaviour and stats.
  */
@@ -51,9 +58,35 @@ export interface ChaseAIComponent {
 /**
  * Spawns a new enemy of the given archetype into the world.
  *
+ * @param world Active world that should host the enemy entity.
  * @param archetype Enemy type to instantiate.
+ * @param position Spawn position in tile coordinates.
+ * @returns Identifier of the newly created enemy entity.
  */
-export function spawnEnemy(archetype: EnemyArchetype): void {
-  // TODO: Integrate with the World/ECS to actually instantiate an enemy entity.
-  void archetype;
+export function spawnEnemy(
+  world: World,
+  archetype: EnemyArchetype,
+  position: { x: number; y: number } = { x: 0, y: 0 },
+): number {
+  if (!world.getComponentStore(TRANSFORM_COMPONENT_KEY)) {
+    world.registerComponentStore(TRANSFORM_COMPONENT_KEY);
+  }
+  if (!world.getComponentStore(HEALTH_COMPONENT_KEY)) {
+    world.registerComponentStore(HEALTH_COMPONENT_KEY);
+  }
+  if (!world.getComponentStore(ENEMY_COMPONENT_KEY)) {
+    world.registerComponentStore(ENEMY_COMPONENT_KEY);
+  }
+
+  const entity = world.createEntity();
+  const enemyComponent = createEnemyComponent(archetype);
+
+  world.addComponent(entity, TRANSFORM_COMPONENT_KEY, { x: position.x, y: position.y });
+  world.addComponent(entity, HEALTH_COMPONENT_KEY, {
+    current: enemyComponent.maxHp,
+    max: enemyComponent.maxHp,
+  });
+  world.addComponent(entity, ENEMY_COMPONENT_KEY, enemyComponent);
+
+  return entity.id;
 }
