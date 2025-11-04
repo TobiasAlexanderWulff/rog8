@@ -10,6 +10,11 @@ import * as collisionModule from '../../engine/collision';
 import type { ChaseAIComponent, EnemyComponent } from '../enemy';
 import { chaseSystem, registerChaseSystem } from '../chase-system';
 
+/**
+ * Validates the system registration helper for the chase AI.
+ *
+ * @returns {void} Nothing; Vitest assertions throw on failure.
+ */
 describe('registerChaseSystem', () => {
   it('wires the chase system into the world pipeline', () => {
     const addSystem = vi.fn();
@@ -22,6 +27,11 @@ describe('registerChaseSystem', () => {
   });
 });
 
+/**
+ * Covers the chase system runtime behaviour across edge cases.
+ *
+ * @returns {void} Nothing; Vitest assertions throw on failure.
+ */
 describe('chaseSystem', () => {
   it('bails when no map resource is present', () => {
     const world = new World();
@@ -68,6 +78,7 @@ describe('chaseSystem', () => {
     }
     const initialTransform = { ...transformBefore };
 
+    // Resource lookup should be the only call made when the map is missing.
     const getResourceSpy = vi.spyOn(world, 'getResource');
     const getComponentStoreSpy = vi.spyOn(world, 'getComponentStore');
 
@@ -113,6 +124,7 @@ describe('chaseSystem', () => {
       const enemyStore = missingKey === enemyKey ? undefined : createStoreStub<EnemyComponent>();
       const chaseStore = missingKey === chaseKey ? undefined : createStoreStub<ChaseAIComponent>();
 
+      // Build a minimal world shape that mimics a single missing dependency.
       const worldStub = {
         getResource: vi.fn().mockReturnValue(mapStub),
         getComponentStore: vi.fn((componentKey: ComponentKey) => {
@@ -210,6 +222,7 @@ describe('chaseSystem', () => {
     const checkCollisionSpy = vi.spyOn(collisionModule, 'checkCollision');
     checkCollisionSpy
       .mockImplementationOnce((_map, x, y) => {
+        // On the first axis we simulate a collision so the system must retry.
         collisionCalls.push({ x, y });
         return {
           blocked: true,
@@ -219,6 +232,7 @@ describe('chaseSystem', () => {
         };
       })
       .mockImplementationOnce((_map, x, y) => {
+        // The follow-up attempt clears the path to confirm successful movement.
         collisionCalls.push({ x, y });
         return {
           blocked: false,

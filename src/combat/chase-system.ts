@@ -13,6 +13,7 @@ const MAP_GRID_RESOURCE_KEY = 'resource.map-grid' as ResourceKey<MapGrid>;
  * Registers the chase AI system with the provided world instance.
  *
  * @param world ECS world that should host the system.
+ * @returns {void} Nothing; the world is mutated by reference.
  */
 export const registerChaseSystem = (world: World): void => {
   world.addSystem(chaseSystem);
@@ -23,8 +24,10 @@ export const registerChaseSystem = (world: World): void => {
  *
  * @param world ECS world to mutate.
  * @param context Frame metadata containing delta time and RNG.
+ * @returns {void} Nothing; transforms mutate in place.
  */
 export const chaseSystem: System = (world, context) => {
+  // Abort when the navigation mesh is unavailable, e.g. during scene transitions.
   const map = world.getResource(MAP_GRID_RESOURCE_KEY);
   if (!map) {
     return;
@@ -42,6 +45,7 @@ export const chaseSystem: System = (world, context) => {
     return;
   }
 
+  // Iterate through every entity that opted into chase AI behaviour.
   for (const [entityId, chase] of chaseStore.entries()) {
     const targetId = chase.targetEntityId;
     if (targetId == null) {
@@ -84,6 +88,7 @@ export const chaseSystem: System = (world, context) => {
     let resolvedY = transform.y;
 
     if (moveX !== 0) {
+      // Resolve horizontal motion first so sliding along walls feels natural.
       const candidateX = resolvedX + moveX;
       const tileX = Math.floor(candidateX);
       const tileY = Math.floor(resolvedY);
@@ -93,6 +98,7 @@ export const chaseSystem: System = (world, context) => {
     }
 
     if (moveY !== 0) {
+      // Follow-up vertical step respects any horizontal adjustment above.
       const candidateY = resolvedY + moveY;
       const tileX = Math.floor(resolvedX);
       const tileY = Math.floor(candidateY);

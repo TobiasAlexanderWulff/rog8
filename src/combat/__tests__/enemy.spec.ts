@@ -12,6 +12,11 @@ const TRANSFORM_COMPONENT_KEY = 'component.transform' as ComponentKey<TransformC
 const HEALTH_COMPONENT_KEY = 'component.health' as ComponentKey<HealthComponent>;
 const ENEMY_COMPONENT_KEY = 'component.enemy' as ComponentKey<EnemyComponent>;
 
+/**
+ * Covers component factory behaviour for combat enemies.
+ *
+ * @returns {void} Nothing; Vitest assertions throw on failure.
+ */
 describe('createEnemyComponent', () => {
   it('creates combat stats for grunt archetype', () => {
     const component = createEnemyComponent('grunt');
@@ -45,6 +50,11 @@ describe('createEnemyComponent', () => {
   });
 });
 
+/**
+ * Exercises enemy spawning integration with the ECS world.
+ *
+ * @returns {void} Nothing; Vitest assertions throw on failure.
+ */
 describe('spawnEnemy', () => {
   it('registers dependent stores when absent', () => {
     const world = new World();
@@ -68,6 +78,7 @@ describe('spawnEnemy', () => {
 
     spawnEnemy(world, 'grunt');
 
+    // A second spawn should not re-register stores once they exist.
     expect(registerSpy).not.toHaveBeenCalled();
   });
 
@@ -93,6 +104,7 @@ describe('spawnEnemy', () => {
     const entityId = spawnEnemy(world, 'grunt', spawnPosition);
     const transform = world.getComponent(entityId, TRANSFORM_COMPONENT_KEY);
 
+    // The world should copy, not reuse, the caller-provided position object.
     expect(transform).toEqual({ x: 12, y: -4 });
     expect(transform).not.toBe(spawnPosition);
   });
