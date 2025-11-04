@@ -1,9 +1,16 @@
 /**
  * @fileoverview Combat enemy component scaffolding tests.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createEnemyComponent, spawnEnemy } from '../enemy';
+import type { ComponentKey, TransformComponent, HealthComponent } from '../../engine/components';
+import type { EnemyComponent } from '../enemy';
+import { World } from '../../engine/world';
+
+const TRANSFORM_COMPONENT_KEY = 'component.transform' as ComponentKey<TransformComponent>;
+const HEALTH_COMPONENT_KEY = 'component.health' as ComponentKey<HealthComponent>;
+const ENEMY_COMPONENT_KEY = 'component.enemy' as ComponentKey<EnemyComponent>;
 
 describe('createEnemyComponent', () => {
   it('creates combat stats for grunt archetype', () => {
@@ -40,17 +47,53 @@ describe('createEnemyComponent', () => {
 
 describe('spawnEnemy', () => {
   it('registers dependent stores when absent', () => {
-    // TODO: confirm component stores are created lazily on spawn
-    expect(spawnEnemy).toBeDefined();
+    const world = new World();
+    const registerSpy = vi.spyOn(world, 'registerComponentStore');
+
+    expect(world.getComponentStore(TRANSFORM_COMPONENT_KEY)).toBeUndefined();
+    expect(world.getComponentStore(HEALTH_COMPONENT_KEY)).toBeUndefined();
+    expect(world.getComponentStore(ENEMY_COMPONENT_KEY)).toBeUndefined();
+
+    spawnEnemy(world, 'grunt');
+
+    expect(registerSpy).toHaveBeenCalledTimes(3);
+    expect(registerSpy).toHaveBeenNthCalledWith(1, TRANSFORM_COMPONENT_KEY);
+    expect(registerSpy).toHaveBeenNthCalledWith(2, HEALTH_COMPONENT_KEY);
+    expect(registerSpy).toHaveBeenNthCalledWith(3, ENEMY_COMPONENT_KEY);
+    expect(world.getComponentStore(TRANSFORM_COMPONENT_KEY)).toBeDefined();
+    expect(world.getComponentStore(HEALTH_COMPONENT_KEY)).toBeDefined();
+    expect(world.getComponentStore(ENEMY_COMPONENT_KEY)).toBeDefined();
+
+    registerSpy.mockClear();
+
+    spawnEnemy(world, 'grunt');
+
+    expect(registerSpy).not.toHaveBeenCalled();
   });
 
   it('initializes health and transform components using defaults', () => {
-    // TODO: assert spawned entities receive default component payloads
-    expect(spawnEnemy).toBeDefined();
+    const world = new World();
+
+    const entityId = spawnEnemy(world, 'grunt');
+
+    expect(world.getComponent(entityId, TRANSFORM_COMPONENT_KEY)).toEqual({ x: 0, y: 0 });
+    expect(world.getComponent(entityId, HEALTH_COMPONENT_KEY)).toEqual({ current: 1, max: 1 });
+    expect(world.getComponent(entityId, ENEMY_COMPONENT_KEY)).toEqual({
+      archetype: 'grunt',
+      maxHp: 1,
+      speed: 1.5,
+      damage: 1,
+    });
   });
 
   it('respects provided spawn coordinates', () => {
-    // TODO: validate spawn position propagation across components
-    expect(spawnEnemy).toBeDefined();
+    const world = new World();
+    const spawnPosition = { x: 12, y: -4 };
+
+    const entityId = spawnEnemy(world, 'grunt', spawnPosition);
+    const transform = world.getComponent(entityId, TRANSFORM_COMPONENT_KEY);
+
+    expect(transform).toEqual({ x: 12, y: -4 });
+    expect(transform).not.toBe(spawnPosition);
   });
 });
