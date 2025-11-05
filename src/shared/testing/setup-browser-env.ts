@@ -8,21 +8,52 @@ import { JSDOM } from 'jsdom';
 
 import { ensureParse5ForCommonJS } from '../parse5-shim';
 
+/**
+ * Bundle of handles returned when a browser-like environment is set up for tests.
+ *
+ * Attributes:
+ *   window: jsdom window instance mirroring browser globals.
+ *   cleanup: Callback that tears down injected globals and releases the window.
+ */
 export interface BrowserEnv {
   window: Window;
   cleanup: () => void;
 }
 
+/**
+ * Tracks original global entries so they can be restored during cleanup.
+ *
+ * Attributes:
+ *   key: Global identifier assigned on setup.
+ *   previous: Prior value stored under the global identifier.
+ */
 interface AssignedEntry {
   key: string;
   previous: unknown;
 }
 
+/**
+ * Assigns a value onto the global object while recording prior state for later restoration.
+ *
+ * Args:
+ *   entries (AssignedEntry[]): Mutable list that receives the captured assignment metadata.
+ *   key (string): Global field name to override.
+ *   value (unknown): Replacement value injected into the global scope.
+ */
 const assignGlobal = (entries: AssignedEntry[], key: string, value: unknown): void => {
   entries.push({ key, previous: (globalThis as Record<string, unknown>)[key] });
   (globalThis as Record<string, unknown>)[key] = value;
 };
 
+/**
+ * Bootstraps a jsdom-driven browser environment and injects key globals for DOM-centric tests.
+ *
+ * Args:
+ *   html (string | undefined): HTML skeleton used to initialise the document. Defaults to a blank page.
+ *
+ * Returns:
+ *   Promise<BrowserEnv>: Resolves with the jsdom window handle and cleanup callback.
+ */
 export const setupBrowserEnv = async (
   html = '<!DOCTYPE html><html><body></body></html>',
 ): Promise<BrowserEnv> => {

@@ -39,9 +39,9 @@ const PLAYER_COMPONENT_KEY = 'component.player' as ComponentKey<PlayerComponent>
 /**
  * Installs the player movement system with the provided configuration.
  *
- * @param world ECS world that manages entities and components.
- * @param options Handles required to read input and adjust velocities.
- * @returns void
+ * Args:
+ *   world (World): ECS world that manages entities and components.
+ *   options (PlayerMovementOptions): Handles required to read input and adjust velocities.
  */
 export const registerPlayerMovementSystem = (
   world: World,
@@ -56,9 +56,9 @@ export const registerPlayerMovementSystem = (
 /**
  * Applies player-facing movement by sampling the current input state.
  *
- * @param world ECS world to mutate.
- * @param context Frame metadata including RNG and delta time.
- * @returns void
+ * Args:
+ *   world (World): ECS world to mutate.
+ *   context (TickContext): Frame metadata including RNG and delta time.
  */
 export const playerMovementSystem: System = (world, context) => {
   const options = world.getResource(PLAYER_MOVEMENT_OPTIONS_KEY);

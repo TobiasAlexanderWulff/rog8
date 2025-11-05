@@ -416,8 +416,11 @@ type CanvasCall = CanvasMethodCall | CanvasPropertyCall;
 /**
  * Reports whether a captured canvas call originated from a method invocation.
  *
- * @param {CanvasCall} call - Call record captured from the spy context.
- * @returns {boolean} True when the call corresponds to a canvas method.
+ * Args:
+ *   call (CanvasCall): Call record captured from the spy context.
+ *
+ * Returns:
+ *   boolean: True when the call corresponds to a canvas method.
  */
 function isMethodCall(call: CanvasCall): call is CanvasMethodCall {
   return call.kind === 'method';
@@ -426,8 +429,11 @@ function isMethodCall(call: CanvasCall): call is CanvasMethodCall {
 /**
  * Reports whether a captured canvas call originated from a property assignment.
  *
- * @param {CanvasCall} call - Call record captured from the spy context.
- * @returns {boolean} True when the call corresponds to a canvas property write.
+ * Args:
+ *   call (CanvasCall): Call record captured from the spy context.
+ *
+ * Returns:
+ *   boolean: True when the call corresponds to a canvas property write.
  */
 function isPropertyCall(call: CanvasCall): call is CanvasPropertyCall {
   return call.kind === 'property';
@@ -436,8 +442,9 @@ function isPropertyCall(call: CanvasCall): call is CanvasPropertyCall {
 /**
  * Creates a spy canvas rendering context that records invoked methods and property mutations.
  *
- * @returns {{ context: CanvasRenderingContext2D, calls: CanvasCall[] }} Spy context and captured
- * call history.
+ * Returns:
+ *   { context: CanvasRenderingContext2D; calls: CanvasCall[] }: Spy context and captured call
+ *   history.
  */
 function createCanvasContextSpy(): { context: CanvasRenderingContext2D; calls: CanvasCall[] } {
   const calls: CanvasCall[] = [];

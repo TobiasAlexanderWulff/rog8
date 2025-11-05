@@ -21,6 +21,11 @@ const PLAYER_STARTING_HEALTH = 5;
 
 /**
  * Output produced when a new run is initialised.
+ *
+ * Attributes:
+ *   map: Generated tile grid and metadata for the run.
+ *   playerEntityId: Identifier of the spawned player entity.
+ *   enemyEntityIds: Entity identifiers for spawned enemies.
  */
 export interface RunBootstrapResult {
   map: GeneratedMap;
@@ -32,9 +37,12 @@ export interface RunBootstrapResult {
 /**
  * Constructs the initial world state for a new run.
  *
- * @param world ECS world to populate.
- * @param seed Seed that governs deterministic generation.
- * @returns Identifiers and map data required to start the run.
+ * Args:
+ *   world (World): ECS world to populate.
+ *   seed (RunSeed): Seed that governs deterministic generation.
+ *
+ * Returns:
+ *   RunBootstrapResult: Identifiers and map data required to start the run.
  */
 export function bootstrapRun(world: World, seed: RunSeed): RunBootstrapResult {
   const ensureComponentStore = <T>(componentKey: ComponentKey<T>): void => {

@@ -13,10 +13,13 @@ export interface CollisionResult {
 /**
  * Determines whether a map coordinate intersects a blocking tile.
  *
- * @param map Tile grid describing the walkable space.
- * @param x Tile-space X coordinate to check.
- * @param y Tile-space Y coordinate to check.
- * @returns Collision information for the requested location.
+ * Args:
+ *   map (MapGrid): Tile grid describing the walkable space.
+ *   x (number): Tile-space X coordinate to check.
+ *   y (number): Tile-space Y coordinate to check.
+ *
+ * Returns:
+ *   CollisionResult: Collision information for the requested location.
  */
 export function checkCollision(map: MapGrid, x: number, y: number): CollisionResult {
   const width = map.width;

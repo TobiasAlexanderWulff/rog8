@@ -13,8 +13,9 @@ export interface TickContext {
 /**
  * Fixed signature each system adheres to when mutating the world state.
  *
- * @param world Active world instance being updated.
- * @param context Frame metadata for timing and RNG usage.
+ * Args:
+ *   world (World): Active world instance being updated.
+ *   context (TickContext): Frame metadata for timing and RNG usage.
  */
 export type System = (world: World, context: TickContext) => void;
 
@@ -50,7 +51,8 @@ export class World {
   /**
    * Allocates a new entity and assigns a unique identifier.
    *
-   * @returns Fresh entity backed by the internal entity map.
+   * Returns:
+   *   Entity: Fresh entity backed by the internal entity map.
    */
   createEntity(): Entity {
     const entity: Entity = { id: this.nextEntityId++ };
@@ -61,7 +63,8 @@ export class World {
   /**
    * Schedules an entity for destruction together with all attached components.
    *
-   * @param entity Entity reference or identifier scheduled for removal.
+   * Args:
+   *   entity (Entity | EntityId): Entity reference or identifier scheduled for removal.
    */
   destroyEntity(entity: Entity | EntityId): void {
     const entityId = this.resolveEntityId(entity);
@@ -86,9 +89,14 @@ export class World {
   /**
    * Registers a component store so it can be referenced by systems.
    *
-   * @param componentName Unique component key associated with the store.
-   * @returns Newly created component store.
-   * @throws Error when a store for the component already exists.
+   * Args:
+   *   componentName (ComponentKey<T>): Unique component key associated with the store.
+   *
+   * Returns:
+   *   ComponentStore<T>: Newly created component store.
+   *
+   * Throws:
+   *   Error: When a store for the component already exists.
    */
   registerComponentStore<T>(componentName: ComponentKey<T>): ComponentStore<T> {
     if (this.componentStores.has(componentName)) {
@@ -103,8 +111,11 @@ export class World {
   /**
    * Retrieves a component store if it has been registered previously.
    *
-   * @param componentName Component identifier to look up.
-   * @returns Component store when available; otherwise undefined.
+   * Args:
+   *   componentName (ComponentKey<T>): Component identifier to look up.
+   *
+   * Returns:
+   *   ComponentStore<T> | undefined: Component store when available; otherwise undefined.
    */
   getComponentStore<T>(componentName: ComponentKey<T>): ComponentStore<T> | undefined {
     return this.componentStores.get(componentName) as ComponentStore<T> | undefined;
@@ -113,10 +124,13 @@ export class World {
   /**
    * Attaches a component instance to an entity.
    *
-   * @param entity Entity reference or identifier that owns the component.
-   * @param componentName Component key corresponding to the store.
-   * @param component Component data to attach.
-   * @throws Error when the entity is not alive or the store is absent.
+   * Args:
+   *   entity (Entity | EntityId): Entity reference or identifier that owns the component.
+   *   componentName (ComponentKey<T>): Component key corresponding to the store.
+   *   component (T): Component data to attach.
+   *
+   * Throws:
+   *   Error: When the entity is not alive or the store is absent.
    */
   addComponent<T>(entity: Entity | EntityId, componentName: ComponentKey<T>, component: T): void {
     const entityId = this.resolveEntityId(entity);
@@ -138,9 +152,12 @@ export class World {
   /**
    * Checks whether an entity has a specific component attached.
    *
-   * @param entity Entity reference or identifier to query.
-   * @param componentName Component key to look up.
-   * @returns True when the component exists on the entity.
+   * Args:
+   *   entity (Entity | EntityId): Entity reference or identifier to query.
+   *   componentName (ComponentName): Component key to look up.
+   *
+   * Returns:
+   *   boolean: True when the component exists on the entity.
    */
   hasComponent(entity: Entity | EntityId, componentName: ComponentName): boolean {
     const entityId = this.resolveEntityId(entity);
@@ -155,9 +172,12 @@ export class World {
   /**
    * Retrieves component data attached to a specific entity.
    *
-   * @param entity Entity reference or identifier to inspect.
-   * @param componentName Component key to retrieve.
-   * @returns Component data if present; otherwise undefined.
+   * Args:
+   *   entity (Entity | EntityId): Entity reference or identifier to inspect.
+   *   componentName (ComponentKey<T>): Component key to retrieve.
+   *
+   * Returns:
+   *   T | undefined: Component data if present; otherwise undefined.
    */
   getComponent<T>(entity: Entity | EntityId, componentName: ComponentKey<T>): T | undefined {
     const entityId = this.resolveEntityId(entity);
@@ -172,8 +192,9 @@ export class World {
   /**
    * Removes a component immediately from an entity.
    *
-   * @param entity Entity reference or identifier whose component should be removed.
-   * @param componentName Component key to detach.
+   * Args:
+   *   entity (Entity | EntityId): Entity reference or identifier whose component should be removed.
+   *   componentName (ComponentKey<T>): Component key to detach.
    */
   removeComponent<T>(entity: Entity | EntityId, componentName: ComponentKey<T>): void {
     const entityId = this.resolveEntityId(entity);
@@ -191,8 +212,9 @@ export class World {
   /**
    * Defers component removal until after the current tick completes.
    *
-   * @param entity Entity reference or identifier queued for detachment.
-   * @param componentName Component key to remove.
+   * Args:
+   *   entity (Entity | EntityId): Entity reference or identifier queued for detachment.
+   *   componentName (ComponentKey<T>): Component key to remove.
    */
   queueRemoveComponent<T>(entity: Entity | EntityId, componentName: ComponentKey<T>): void {
     const entityId = this.resolveEntityId(entity);
@@ -202,7 +224,8 @@ export class World {
   /**
    * Registers a system that will run once per update tick.
    *
-   * @param system System callback to register.
+   * Args:
+   *   system (System): System callback to register.
    */
   addSystem(system: System): void {
     if (this.systems.includes(system)) {
@@ -214,9 +237,12 @@ export class World {
   /**
    * Registers a world-level singleton resource.
    *
-   * @param resourceKey Identifier used by systems to locate the resource.
-   * @param resource Resource instance to store.
-   * @throws Error when a resource with the same key already exists.
+   * Args:
+   *   resourceKey (ResourceKey<T>): Identifier used by systems to locate the resource.
+   *   resource (T): Resource instance to store.
+   *
+   * Throws:
+   *   Error: When a resource with the same key already exists.
    */
   registerResource<T>(resourceKey: ResourceKey<T>, resource: T): void {
     if (this.resources.has(resourceKey)) {
@@ -228,8 +254,11 @@ export class World {
   /**
    * Checks whether a resource is registered on the world.
    *
-   * @param resourceKey Identifier tied to the resource.
-   * @returns True when the resource exists.
+   * Args:
+   *   resourceKey (ResourceKey): Identifier tied to the resource.
+   *
+   * Returns:
+   *   boolean: True when the resource exists.
    */
   hasResource(resourceKey: ResourceKey): boolean {
     return this.resources.has(resourceKey);
@@ -238,8 +267,11 @@ export class World {
   /**
    * Retrieves a resource when it has been registered.
    *
-   * @param resourceKey Identifier tied to the resource.
-   * @returns Resource instance or undefined when absent.
+   * Args:
+   *   resourceKey (ResourceKey<T>): Identifier tied to the resource.
+   *
+   * Returns:
+   *   T | undefined: Resource instance or undefined when absent.
    */
   getResource<T>(resourceKey: ResourceKey<T>): T | undefined {
     return this.resources.get(resourceKey) as T | undefined;
@@ -248,8 +280,11 @@ export class World {
   /**
    * Removes a resource and returns whether it existed.
    *
-   * @param resourceKey Identifier tied to the resource.
-   * @returns True when the resource was removed.
+   * Args:
+   *   resourceKey (ResourceKey): Identifier tied to the resource.
+   *
+   * Returns:
+   *   boolean: True when the resource was removed.
    */
   removeResource(resourceKey: ResourceKey): boolean {
     return this.resources.delete(resourceKey);
@@ -258,7 +293,8 @@ export class World {
   /**
    * Executes all registered systems with the provided tick context.
    *
-   * @param context Frame metadata that each system receives.
+   * Args:
+   *   context (TickContext): Frame metadata that each system receives.
    */
   update(context: TickContext): void {
     for (const system of this.systems) {
@@ -332,8 +368,9 @@ export class World {
   /**
    * Updates component tracking after a component is removed from an entity.
    *
-   * @param entityId Identifier of the entity that lost a component.
-   * @param componentName Component key that was removed.
+   * Args:
+   *   entityId (EntityId): Identifier of the entity that lost a component.
+   *   componentName (ComponentName): Component key that was removed.
    */
   private afterComponentRemoval(entityId: EntityId, componentName: ComponentName): void {
     const componentSet = this.componentsByEntity.get(entityId);
@@ -350,8 +387,11 @@ export class World {
   /**
    * Normalises an entity reference into a bare identifier.
    *
-   * @param entity Entity object or identifier.
-   * @returns Normalised entity ID.
+   * Args:
+   *   entity (Entity | EntityId): Entity object or identifier.
+   *
+   * Returns:
+   *   EntityId: Normalised entity ID.
    */
   private resolveEntityId(entity: Entity | EntityId): EntityId {
     return typeof entity === 'number' ? entity : entity.id;
@@ -360,8 +400,11 @@ export class World {
   /**
    * Throws when an entity is missing or scheduled for removal.
    *
-   * @param entityId Identifier that should point to a live entity.
-   * @throws Error if the entity is not tracked or queued for destruction.
+   * Args:
+   *   entityId (EntityId): Identifier that should point to a live entity.
+   *
+   * Throws:
+   *   Error: If the entity is not tracked or queued for destruction.
    */
   private assertEntityAlive(entityId: EntityId): void {
     if (!this.entities.has(entityId) || this.pendingEntityRemovals.has(entityId)) {
@@ -372,9 +415,14 @@ export class World {
   /**
    * Retrieves a component store or throws when it has not been registered.
    *
-   * @param componentName Component key tied to the store.
-   * @returns Component store associated with the key.
-   * @throws Error if the store is missing.
+   * Args:
+   *   componentName (ComponentKey<T>): Component key tied to the store.
+   *
+   * Returns:
+   *   ComponentStore<T>: Component store associated with the key.
+   *
+   * Throws:
+   *   Error: If the store is missing.
    */
   private requireComponentStore<T>(componentName: ComponentKey<T>): ComponentStore<T> {
     const store = this.getComponentStore<T>(componentName);
@@ -387,8 +435,9 @@ export class World {
   /**
    * Queues a component for removal while preserving safe iteration semantics.
    *
-   * @param entityId Entity identifier that owns the component.
-   * @param componentName Component key to remove.
+   * Args:
+   *   entityId (EntityId): Entity identifier that owns the component.
+   *   componentName (ComponentName): Component key to remove.
    */
   private queueComponentRemoval(entityId: EntityId, componentName: ComponentName): void {
     const store = this.getComponentStore(componentName);
@@ -408,9 +457,12 @@ export class World {
   /**
    * Produces a stable key for tracking deferred component removals.
    *
-   * @param entityId Entity identifier.
-   * @param componentName Component key.
-   * @returns Stable composite key combining entity and component names.
+   * Args:
+   *   entityId (EntityId): Entity identifier.
+   *   componentName (ComponentName): Component key.
+   *
+   * Returns:
+   *   string: Stable composite key combining entity and component names.
    */
   private toRemovalKey(entityId: EntityId, componentName: ComponentName): string {
     return `${componentName}:${entityId}`;
@@ -419,8 +471,11 @@ export class World {
   /**
    * Reports whether the world still considers an entity alive.
    *
-   * @param entity Entity reference or identifier.
-   * @returns True when the entity exists and is not queued for removal.
+   * Args:
+   *   entity (Entity | EntityId): Entity reference or identifier.
+   *
+   * Returns:
+   *   boolean: True when the entity exists and is not queued for removal.
    */
   isEntityAlive(entity: Entity | EntityId): boolean {
     const entityId = this.resolveEntityId(entity);

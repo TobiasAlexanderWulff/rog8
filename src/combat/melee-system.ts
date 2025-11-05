@@ -5,9 +5,10 @@ import type { EnemyComponent } from './enemy';
 /**
  * Snapshot of the impulse applied to a target after a melee hit.
  *
- * @property {number} directionX Unit-length x component; sanitized to 0 when invalid.
- * @property {number} directionY Unit-length y component; sanitized to 0 when invalid.
- * @property {number} magnitude Force multiplier applied along the direction vector.
+ * Attributes:
+ *   directionX: Unit-length x component; sanitized to 0 when invalid.
+ *   directionY: Unit-length y component; sanitized to 0 when invalid.
+ *   magnitude: Force multiplier applied along the direction vector.
  */
 export interface KnockbackImpulse {
   directionX: number;
@@ -18,10 +19,11 @@ export interface KnockbackImpulse {
 /**
  * Event describing an attacker striking a target.
  *
- * @property {number} attackerId Entity identifier for the aggressor.
- * @property {number} targetId Entity identifier for the victim.
- * @property {number} damage Requested damage; sanitized before resolution.
- * @property {KnockbackImpulse} [knockback] Optional impulse applied when supplied.
+ * Attributes:
+ *   attackerId: Entity identifier for the aggressor.
+ *   targetId: Entity identifier for the victim.
+ *   damage: Requested damage; sanitized before resolution.
+ *   knockback: Optional impulse applied when supplied.
  */
 export interface MeleeAttackEvent {
   attackerId: number;
@@ -47,8 +49,8 @@ const DEFAULT_MELEE_DAMAGE = 1;
  * The function ensures a shared queue resource exists, clears stale events, and
  * registers a dispatch callback that sanitizes attack payloads before enqueueing.
  *
- * @param {World} world ECS world that hosts systems and components.
- * @returns {void}
+ * Args:
+ *   world (World): ECS world that hosts systems and components.
  */
 export const registerMeleeSystem = (world: World): void => {
   const existingQueue = world.getResource(MELEE_ATTACK_QUEUE_KEY);
@@ -106,9 +108,9 @@ export const registerMeleeSystem = (world: World): void => {
  * The system applies damage, enforces enemy damage overrides, mutates target
  * velocities when knockback is present, and finally drains the queue.
  *
- * @param {World} world ECS world being updated.
- * @param {TickContext} context Frame metadata including delta and RNG.
- * @returns {void}
+ * Args:
+ *   world (World): ECS world being updated.
+ *   context (TickContext): Frame metadata including delta and RNG.
  */
 export const meleeSystem: System = (world, context) => {
   const queue = world.getResource(MELEE_ATTACK_QUEUE_KEY);

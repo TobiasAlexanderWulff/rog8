@@ -48,8 +48,9 @@ export class ComponentStore<T> {
   /**
    * Stores component data for the given entity, overwriting existing state.
    *
-   * @param entityId Entity identifier that owns the component.
-   * @param component Component data to persist.
+   * Args:
+   *   entityId (EntityId): Entity identifier that owns the component.
+   *   component (T): Component data to persist.
    */
   add(entityId: EntityId, component: T): void {
     this.components.set(entityId, component);
@@ -59,8 +60,11 @@ export class ComponentStore<T> {
   /**
    * Retrieves component data when present on the store.
    *
-   * @param entityId Entity identifier to query.
-   * @returns Component instance or undefined when missing.
+   * Args:
+   *   entityId (EntityId): Entity identifier to query.
+   *
+   * Returns:
+   *   T | undefined: Component instance or undefined when missing.
    */
   get(entityId: EntityId): T | undefined {
     return this.components.get(entityId);
@@ -69,8 +73,11 @@ export class ComponentStore<T> {
   /**
    * Checks whether an entity currently has component data stored.
    *
-   * @param entityId Entity identifier to inspect.
-   * @returns True when the store contains an entry for the identifier.
+   * Args:
+   *   entityId (EntityId): Entity identifier to inspect.
+   *
+   * Returns:
+   *   boolean: True when the store contains an entry for the identifier.
    */
   has(entityId: EntityId): boolean {
     return this.components.has(entityId);
@@ -78,6 +85,9 @@ export class ComponentStore<T> {
 
   /**
    * Removes a component immediately. Use queueRemoval when deferring cleanup until after iteration.
+   *
+   * Args:
+   *   entityId (EntityId): Entity identifier whose component should be removed.
    */
   remove(entityId: EntityId): void {
     this.components.delete(entityId);
@@ -86,6 +96,9 @@ export class ComponentStore<T> {
 
   /**
    * Queues component removal to avoid invalidating iterators mid-tick.
+   *
+   * Args:
+   *   entityId (EntityId): Entity identifier to mark for deferred removal.
    */
   queueRemoval(entityId: EntityId): void {
     if (this.components.has(entityId)) {
@@ -110,6 +123,9 @@ export class ComponentStore<T> {
 
   /**
    * Returns the current components as an array sorted by entity ID for deterministic iteration.
+   *
+   * Returns:
+   *   Array<[EntityId, T]>: Sorted entity-component pairs.
    */
   entries(): Array<[EntityId, T]> {
     if (this.components.size === 0) {

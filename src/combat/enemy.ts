@@ -44,8 +44,11 @@ export interface EnemyComponent extends EnemyCombatStats {
 /**
  * Creates an enemy combat component instance for the requested archetype.
  *
- * @param archetype Enemy template that controls base stats.
- * @returns {EnemyComponent} Fresh component instance for the archetype.
+ * Args:
+ *   archetype (EnemyArchetype): Enemy template that controls base stats.
+ *
+ * Returns:
+ *   EnemyComponent: Fresh component instance for the archetype.
  */
 export function createEnemyComponent(archetype: EnemyArchetype): EnemyComponent {
   const stats = ARCHETYPE_STATS[archetype];
@@ -71,10 +74,13 @@ export interface ChaseAIComponent {
 /**
  * Spawns a new enemy of the given archetype into the world.
  *
- * @param world Active world that should host the enemy entity.
- * @param archetype Enemy type to instantiate.
- * @param position Spawn position in tile coordinates.
- * @returns {number} Identifier of the newly created enemy entity.
+ * Args:
+ *   world (World): Active world that should host the enemy entity.
+ *   archetype (EnemyArchetype): Enemy type to instantiate.
+ *   position ({ x: number; y: number }): Spawn position in tile coordinates.
+ *
+ * Returns:
+ *   number: Identifier of the newly created enemy entity.
  */
 export function spawnEnemy(
   world: World,

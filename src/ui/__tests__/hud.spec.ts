@@ -8,12 +8,24 @@ import { setupBrowserEnv } from '../../shared/testing/setup-browser-env';
 
 let cleanup: (() => void) | undefined;
 
+/**
+ * Seeds a fresh jsdom window and HUD root before each test case.
+ *
+ * Returns:
+ *   Promise<void>: Resolves when the browser environment is initialised.
+ */
 beforeEach(async () => {
   const env = await setupBrowserEnv();
   cleanup = env.cleanup;
   document.body.innerHTML = '<div id="hud-root"></div>';
 });
 
+/**
+ * Resets the DOM and restores mocks plus environment bindings after each test.
+ *
+ * Returns:
+ *   void: Always completes synchronously without a return value.
+ */
 afterEach(() => {
   document.body.innerHTML = '';
   vi.restoreAllMocks();

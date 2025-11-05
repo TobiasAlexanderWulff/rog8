@@ -1,7 +1,11 @@
 import type { RunSeed } from '../shared/random';
 
 /**
- * Reactive HUD data exposed to rendering routines.
+ * Represents the reactive HUD metrics that rendering routines consume.
+ *
+ * Attributes:
+ *   health: Current and maximum hit points for the player.
+ *   seed: Deterministic run seed surfaced for debugging and sharing.
  */
 export interface HudState {
   health: { current: number; max: number };
@@ -10,10 +14,13 @@ export interface HudState {
 }
 
 /**
- * Mounts and initialises the HUD under the provided root element.
+ * Creates the HUD overlay, attaches it to the provided root element, and returns the default state.
  *
- * @param root DOM node that will host the HUD.
- * @returns Initial HUD state snapshot.
+ * Args:
+ *   root (HTMLElement): DOM node that hosts the HUD. Its children are replaced with the overlay.
+ *
+ * Returns:
+ *   HudState: Baseline HUD snapshot that mirrors the initial DOM contents.
  */
 export function createHud(root: HTMLElement): HudState {
   const overlay = document.createElement('section');
@@ -60,9 +67,10 @@ export function createHud(root: HTMLElement): HudState {
 }
 
 /**
- * Updates the HUD visuals to reflect the latest state.
+ * Propagates the supplied HUD state into the overlay so the UI reflects the latest values.
  *
- * @param state Current HUD data to render.
+ * Args:
+ *   state (HudState): Current HUD metrics to render.
  */
 export function updateHud(state: HudState): void {
   const overlay = document.querySelector<HTMLElement>('[data-hud-layer="overlay"]');
@@ -89,9 +97,10 @@ export function updateHud(state: HudState): void {
 }
 
 /**
- * Displays a simple game-over overlay highlighting the seed used.
+ * Reveals the game-over overlay, highlighting the seed used for the failed run.
  *
- * @param seed Run seed associated with the failed attempt.
+ * Args:
+ *   seed (RunSeed): Deterministic seed associated with the attempt.
  */
 export function showGameOver(seed: RunSeed): void {
   const overlay = document.querySelector<HTMLElement>('[data-hud-layer="overlay"]');

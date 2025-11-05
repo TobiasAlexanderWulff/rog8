@@ -12,8 +12,8 @@ const MAP_GRID_RESOURCE_KEY = 'resource.map-grid' as ResourceKey<MapGrid>;
 /**
  * Registers the chase AI system with the provided world instance.
  *
- * @param world ECS world that should host the system.
- * @returns {void} Nothing; the world is mutated by reference.
+ * Args:
+ *   world (World): ECS world that should host the system.
  */
 export const registerChaseSystem = (world: World): void => {
   world.addSystem(chaseSystem);
@@ -22,9 +22,9 @@ export const registerChaseSystem = (world: World): void => {
 /**
  * Moves enemies toward their targets based on line-of-sight and aggro rules.
  *
- * @param world ECS world to mutate.
- * @param context Frame metadata containing delta time and RNG.
- * @returns {void} Nothing; transforms mutate in place.
+ * Args:
+ *   world (World): ECS world to mutate.
+ *   context (TickContext): Frame metadata containing delta time and RNG.
  */
 export const chaseSystem: System = (world, context) => {
   // Abort when the navigation mesh is unavailable, e.g. during scene transitions.

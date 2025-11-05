@@ -23,9 +23,12 @@ const BIOME_VALUE_MASK = 0xff;
 /**
  * Packs collision and biome information into a single tile flag.
  *
- * @param collision Collision mask describing walkability and hazards.
- * @param biomeId Numeric biome identifier assigned to the tile.
- * @returns Number containing both collision and biome data.
+ * Args:
+ *   collision (TileCollisionFlag): Collision mask describing walkability and hazards.
+ *   biomeId (number): Numeric biome identifier assigned to the tile.
+ *
+ * Returns:
+ *   number: Value containing both collision and biome data.
  */
 export function packTileFlags(collision: TileCollisionFlag, biomeId: number): number {
   const biome = (biomeId & BIOME_VALUE_MASK) << BIOME_SHIFT;
@@ -35,8 +38,11 @@ export function packTileFlags(collision: TileCollisionFlag, biomeId: number): nu
 /**
  * Extracts the collision bitmask from packed tile flags.
  *
- * @param flags Packed flag value produced by {@link packTileFlags}.
- * @returns Collision mask describing blocking and hazard states.
+ * Args:
+ *   flags (number): Packed flag value produced by {@link packTileFlags}.
+ *
+ * Returns:
+ *   TileCollisionFlag: Collision mask describing blocking and hazard states.
  */
 export function unpackCollision(flags: number): TileCollisionFlag {
   return flags & COLLISION_MASK;
@@ -45,8 +51,11 @@ export function unpackCollision(flags: number): TileCollisionFlag {
 /**
  * Extracts the biome identifier from packed tile flags.
  *
- * @param flags Packed flag value produced by {@link packTileFlags}.
- * @returns Numeric biome identifier encoded in the flags.
+ * Args:
+ *   flags (number): Packed flag value produced by {@link packTileFlags}.
+ *
+ * Returns:
+ *   number: Numeric biome identifier encoded in the flags.
  */
 export function unpackBiomeId(flags: number): number {
   return (flags & BIOME_MASK) >> BIOME_SHIFT;
@@ -94,10 +103,13 @@ export interface RoomDescriptor {
 /**
  * Calculates the linear array index for a tile coordinate.
  *
- * @param grid Map grid containing the tile array.
- * @param x Tile column coordinate.
- * @param y Tile row coordinate.
- * @returns Index into `grid.tiles`.
+ * Args:
+ *   grid (MapGrid): Map grid containing the tile array.
+ *   x (number): Tile column coordinate.
+ *   y (number): Tile row coordinate.
+ *
+ * Returns:
+ *   number: Index into `grid.tiles`.
  */
 function tileIndex(grid: MapGrid, x: number, y: number): number {
   return y * grid.width + x;
@@ -109,10 +121,13 @@ function tileIndex(grid: MapGrid, x: number, y: number): number {
  * Bounds checks are performed so callers can query out-of-range coordinates
  * without needing their own guards.
  *
- * @param grid Map grid to sample.
- * @param x Tile column coordinate.
- * @param y Tile row coordinate.
- * @returns Tile instance or `undefined` when outside bounds.
+ * Args:
+ *   grid (MapGrid): Map grid to sample.
+ *   x (number): Tile column coordinate.
+ *   y (number): Tile row coordinate.
+ *
+ * Returns:
+ *   Tile | undefined: Tile instance or `undefined` when outside bounds.
  */
 export function getTile(grid: MapGrid, x: number, y: number): Tile | undefined {
   if (x < 0 || y < 0 || x >= grid.width || y >= grid.height) {
@@ -125,10 +140,11 @@ export function getTile(grid: MapGrid, x: number, y: number): Tile | undefined {
 /**
  * Writes a tile into the grid when the coordinate is inside bounds.
  *
- * @param grid Map grid to update.
- * @param x Tile column coordinate.
- * @param y Tile row coordinate.
- * @param tile Tile payload to store at the coordinate.
+ * Args:
+ *   grid (MapGrid): Map grid to update.
+ *   x (number): Tile column coordinate.
+ *   y (number): Tile row coordinate.
+ *   tile (Tile): Tile payload to store at the coordinate.
  */
 export function setTile(grid: MapGrid, x: number, y: number, tile: Tile): void {
   if (x < 0 || y < 0 || x >= grid.width || y >= grid.height) {
@@ -163,8 +179,11 @@ export interface GeneratedMap {
  * The algorithm scatters rectangular rooms, ensures overlap padding, and then
  * connects room centers with L-shaped corridors to guarantee traversability.
  *
- * @param rng Deterministic RNG seeded by the current run.
- * @returns Grid and metadata describing the generated floor.
+ * Args:
+ *   rng (RNG): Deterministic RNG seeded by the current run.
+ *
+ * Returns:
+ *   GeneratedMap: Grid and metadata describing the generated floor.
  */
 export function generateSimpleMap(rng: RNG): GeneratedMap {
   const MAP_WIDTH = 64;
@@ -204,10 +223,13 @@ export function generateSimpleMap(rng: RNG): GeneratedMap {
   /**
    * Tests whether two rooms overlap when expanded by a padding margin.
    *
-   * @param a First room descriptor.
-   * @param b Second room descriptor.
-   * @param padding Additional spacing required between rooms.
-   * @returns True if the rooms intersect after padding is applied.
+   * Args:
+   *   a (RoomDescriptor): First room descriptor.
+   *   b (RoomDescriptor): Second room descriptor.
+   *   padding (number): Additional spacing required between rooms.
+   *
+   * Returns:
+   *   boolean: True if the rooms intersect after padding is applied.
    */
   const intersects = (a: RoomDescriptor, b: RoomDescriptor, padding: number): boolean => {
     return !(
@@ -221,10 +243,11 @@ export function generateSimpleMap(rng: RNG): GeneratedMap {
   /**
    * Carves out a rectangular region of floor tiles in the grid.
    *
-   * @param x Left edge of the rectangle.
-   * @param y Top edge of the rectangle.
-   * @param width Rectangle width in tiles.
-   * @param height Rectangle height in tiles.
+   * Args:
+   *   x (number): Left edge of the rectangle.
+   *   y (number): Top edge of the rectangle.
+   *   width (number): Rectangle width in tiles.
+   *   height (number): Rectangle height in tiles.
    */
   const carveRect = (x: number, y: number, width: number, height: number): void => {
     const startX = Math.max(0, x);
@@ -298,9 +321,10 @@ export function generateSimpleMap(rng: RNG): GeneratedMap {
   /**
    * Carves a horizontal corridor segment between two column positions.
    *
-   * @param y Row within the grid to carve.
-   * @param x0 Starting column.
-   * @param x1 Ending column.
+   * Args:
+   *   y (number): Row within the grid to carve.
+   *   x0 (number): Starting column.
+   *   x1 (number): Ending column.
    */
   const carveHorizontal = (y: number, x0: number, x1: number): void => {
     const start = Math.max(0, Math.min(x0, x1));
@@ -314,9 +338,10 @@ export function generateSimpleMap(rng: RNG): GeneratedMap {
   /**
    * Carves a vertical corridor segment between two row positions.
    *
-   * @param x Column within the grid to carve.
-   * @param y0 Starting row.
-   * @param y1 Ending row.
+   * Args:
+   *   x (number): Column within the grid to carve.
+   *   y0 (number): Starting row.
+   *   y1 (number): Ending row.
    */
   const carveVertical = (x: number, y0: number, y1: number): void => {
     const start = Math.max(0, Math.min(y0, y1));
@@ -355,8 +380,11 @@ export function generateSimpleMap(rng: RNG): GeneratedMap {
   /**
    * Computes the grid coordinate of a room's center tile.
    *
-   * @param room Room descriptor to sample.
-   * @returns Approximate central coordinate for the room.
+   * Args:
+   *   room (RoomDescriptor): Room descriptor to sample.
+   *
+   * Returns:
+   *   { x: number; y: number }: Approximate central coordinate for the room.
    */
   const centerOf = (room: RoomDescriptor): { x: number; y: number } => ({
     x: room.x + Math.floor(room.width / 2),

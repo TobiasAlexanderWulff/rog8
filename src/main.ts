@@ -12,7 +12,8 @@ const ROOT_ID = 'app'; // TODO: Keep in sync with actual DOM root.
 /**
  * Generates the initial seed that drives deterministic game runs.
  *
- * @returns Seed wrapper containing a 32-bit unsigned integer.
+ * Returns:
+ *   RunSeed: Seed wrapper containing a 32-bit unsigned integer.
  */
 function createInitialSeed(): RunSeed {
   // TODO: Generate a deterministic seed (random per run, surfaced in HUD).

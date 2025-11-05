@@ -11,8 +11,18 @@ import type {
 import { createEnemyComponent, type EnemyComponent } from '../combat/enemy';
 import { InputManager } from './input';
 
+/**
+ * Labels for the lifecycle states a run can occupy.
+ */
 export type RunState = 'init' | 'playing' | 'game-over';
 
+/**
+ * Configuration provided when constructing a run controller.
+ *
+ * Attributes:
+ *   seed: Base random seed that keeps the run deterministic.
+ *   targetDeltaMs: Fixed timestep in milliseconds that the loop strives to maintain.
+ */
 export interface RunControllerOptions {
   seed: RunSeed;
   targetDeltaMs: number;
@@ -20,6 +30,16 @@ export interface RunControllerOptions {
 
 /**
  * Coordinates high-level game loop state, feeding ticks into the ECS world.
+ *
+ * Attributes:
+ *   world: ECS world instance that receives deterministic updates.
+ *   input: Input manager connected to the current run.
+ *   state: Lifecycle state for the run (`init`, `playing`, or `game-over`).
+ *   frame: Current frame count advanced during updates.
+ *   accumulator: Time surplus cached to maintain a fixed timestep.
+ *   seed: Stored seed value, allowing deterministic restarts.
+ *   rng: Pseudorandom generator derived from the seed.
+ *   options: Controller configuration cloned from constructor parameters.
  */
 export class RunController {
   private world: World;
@@ -46,9 +66,10 @@ export class RunController {
   /**
    * Builds a controller that keeps world updates deterministic for a given seed.
    *
-   * @param world ECS world instance that receives update ticks.
-   * @param input Input manager that exposes per-frame state.
-   * @param options Mutable configuration such as seed and target delta.
+   * Args:
+   *   world (World): ECS instance that will receive update ticks.
+   *   input (InputManager): Input facade exposing per-frame state.
+   *   options (RunControllerOptions): Seeded configuration and timestep target.
    */
   constructor(world: World, input: InputManager, options: RunControllerOptions) {
     if (options.targetDeltaMs <= 0) {
@@ -68,7 +89,7 @@ export class RunController {
   }
 
   /**
-   * Transitions into the playing state, preparing the first update tick.
+   * Transitions the run into the playing state and seeds the initial entities.
    */
   start(): void {
     if (this.state !== 'init') {
@@ -103,9 +124,10 @@ export class RunController {
   }
 
   /**
-   * Steps the simulation forward by one frame when the run is active.
+   * Steps the simulation forward by one or more fixed timesteps while the run is active.
    *
-   * @param delta Elapsed time in milliseconds since the previous update.
+   * Args:
+   *   delta (number): Elapsed milliseconds since the previous update invocation.
    */
   update(delta: number): void {
     if (this.state !== 'playing') {
@@ -133,7 +155,7 @@ export class RunController {
   }
 
   /**
-   * Switches the run into the game-over state.
+   * Switches the run into the game-over state and flushes any accumulated time budget.
    */
   triggerGameOver(): void {
     if (this.state !== 'playing') {
@@ -166,6 +188,12 @@ export class RunController {
     }
   }
 
+  /**
+   * Registers a component store if the world does not yet track the component type.
+   *
+   * Args:
+   *   componentKey (ComponentKey<T>): Identifier for the component store to ensure.
+   */
   private ensureComponentStore<T>(componentKey: ComponentKey<T>): void {
     if (!this.world.getComponentStore(componentKey)) {
       this.world.registerComponentStore(componentKey);

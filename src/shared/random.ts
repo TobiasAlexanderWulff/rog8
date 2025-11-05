@@ -51,8 +51,11 @@ type TaggedRng = RNG & {
 /**
  * Type guard that narrows metadata to the Mulberry32 implementation.
  *
- * @param meta Metadata attached to an RNG instance.
- * @returns True when the metadata references a Mulberry32 RNG.
+ * Args:
+ *   meta (RngMeta): Metadata attached to an RNG instance.
+ *
+ * Returns:
+ *   boolean: True when the metadata references a Mulberry32 RNG.
  */
 function isMulberry32Meta(meta: RngMeta): meta is Mulberry32Meta {
   return meta.type === 'mulberry32';
@@ -61,8 +64,11 @@ function isMulberry32Meta(meta: RngMeta): meta is Mulberry32Meta {
 /**
  * Builds a Mulberry32 RNG that exposes deterministic iteration over 32-bit integers.
  *
- * @param seed Unsigned 32-bit seed that initializes the Mulberry32 state.
- * @returns RNG instance bound to the provided seed.
+ * Args:
+ *   seed (Seed): Unsigned 32-bit seed that initializes the Mulberry32 state.
+ *
+ * Returns:
+ *   RNG: Instance bound to the provided seed.
  */
 export function createMulberry32(seed: Seed): RNG {
   // Track the unsigned 32-bit state in a closure so we can expose cloning hooks.
@@ -109,9 +115,12 @@ export function createMulberry32(seed: Seed): RNG {
 /**
  * Executes a consumer with a temporary Mulberry32 RNG seeded deterministically.
  *
- * @param seed Deterministic seed used to initialize the RNG.
- * @param consumer Callback that receives a seeded RNG instance.
- * @returns Result returned by the consumer callback.
+ * Args:
+ *   seed (Seed): Deterministic seed used to initialize the RNG.
+ *   consumer ((rng: RNG) => T): Callback that receives a seeded RNG instance.
+ *
+ * Returns:
+ *   T: Result returned by the consumer callback.
  */
 export function withSeed<T>(seed: Seed, consumer: (rng: RNG) => T): T {
   return consumer(createMulberry32(seed));
@@ -120,9 +129,14 @@ export function withSeed<T>(seed: Seed, consumer: (rng: RNG) => T): T {
 /**
  * Creates a new RNG that mirrors the state of the provided instance.
  *
- * @param rng RNG instance to clone. Must be created via {@link createMulberry32}.
- * @returns New RNG that continues from the same deterministic state.
- * @throws Error when the RNG does not expose clone metadata.
+ * Args:
+ *   rng (RNG): RNG instance to clone. Must be created via {@link createMulberry32}.
+ *
+ * Returns:
+ *   RNG: New RNG that continues from the same deterministic state.
+ *
+ * Throws:
+ *   Error: When the RNG does not expose clone metadata.
  */
 export function cloneRng(rng: RNG): RNG {
   const meta = (rng as TaggedRng)[RNG_META];
