@@ -1,0 +1,55 @@
+digraph ProgramLifecycle {
+  graph [fontname="Inter", fontsize=14, labelloc="t", label="Run Lifecycle Overview", bgcolor="#0f172a", fontcolor="#e2e8f0"];
+  node [shape=box, style="rounded,filled", fontname="Inter", color="#38bdf8", fillcolor="#1e293b", fontcolor="#f8fafc", penwidth=2];
+  edge [color="#38bdf8", penwidth=2];
+
+  subgraph cluster_current {
+    label="Current MVP";
+    color="#38bdf8";
+    fontcolor="#38bdf8";
+    style="rounded";
+    Init [label="init\n(construct controller)"];
+    Start [label="start()\nspawn player + grunt"];
+    Playing [label="playing\nupdate loop"];
+    GameOver [label="game-over\ntriggerGameOver()"];
+    Restart [label="restart()\nreset world"];
+
+    Init -> Start [label="start()\nonce"];
+    Start -> Playing [label="ensure stores\nseed entities"];
+    Playing -> Playing [label="update(delta)\nfixed step", fontcolor="#fbbf24", color="#fbbf24"];
+    Playing -> GameOver [label="triggerGameOver()"];
+    GameOver -> Restart [label="accumulator flush"];
+    Restart -> Init [label="reset seed"];
+  }
+
+  subgraph cluster_final {
+    label="Target Experience";
+    color="#fbbf24";
+    fontcolor="#fbbf24";
+    style="rounded,dashed";
+
+    Boot [label="Boot\nsettings, seeds, services", fillcolor="#172554", color="#fbbf24"];
+    FrontDoor [label="Front Door\ntitle, menus", fillcolor="#1d4ed8", color="#fbbf24"];
+    Prep [label="Run Preparation\nworld + HUD spawn", fillcolor="#1e3a8a", color="#fbbf24"];
+    Loop [label="Gameplay Loop\ninput, systems, dynamics", fillcolor="#1d4ed8", color="#fbbf24"];
+    Summary [label="Post-Run\nstats, unlocks", fillcolor="#172554", color="#fbbf24"];
+    Hygiene [label="Hygiene\nrestart paths, teardown", fillcolor="#0f172a", color="#f87171", fontcolor="#f87171"];
+
+    Boot -> FrontDoor -> Prep -> Loop -> Summary;
+    Summary -> FrontDoor [label="back to menus"];
+    Loop -> Hygiene [label="background services", color="#f87171", fontcolor="#f87171"];
+    Hygiene -> Prep [label="prep variants", color="#f87171", fontcolor="#f87171"];
+  }
+
+  // Legend
+  subgraph cluster_legend {
+    label="Legend";
+    color="#94a3b8";
+    fontcolor="#94a3b8";
+    style="dotted";
+
+    curr [label="Current MVP state", shape=box, style="rounded,filled", fillcolor="#1e293b", color="#38bdf8"];
+    final [label="Target stage", shape=box, style="rounded,filled", fillcolor="#1d4ed8", color="#fbbf24"];
+    hygiene_note [label="Support loops", shape=box, style="rounded,filled", fillcolor="#0f172a", color="#f87171", fontcolor="#f87171"];
+  }
+}
