@@ -6,6 +6,6 @@ X5. Complete `RunController` logic in `src/engine/run-controller.ts`, including 
 X6. Implement map generation in `src/world/mapgen/simple.ts` and run bootstrapping in `src/world/run-setup.ts`.
 X7. Hook up player movement system (`src/engine/systems/player-movement.ts`) with collision checks (`src/engine/collision.ts`).
 X8. Build enemy spawn logic and chase AI (`src/combat/enemy.ts`, `src/combat/chase-system.ts`).
-9. Finish melee combat resolution (`src/combat/melee-system.ts`) and connect events to health components.
+X9. Finish melee combat resolution (`src/combat/melee-system.ts`) and connect events to health components.
 10. Render and update the minimal HUD (`src/ui/hud.ts`) and wire game-over/restart UX through `RunController`.
 11. Replace placeholder draw calls in `src/main.ts` with the integrated gameplay loop and queue Milestone B follow-ups.
