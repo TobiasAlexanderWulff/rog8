@@ -2,6 +2,16 @@ import { RunSeed, withSeed } from '../shared/random';
 
 /**
  * Rendering resources and scaling metadata backing the 2D canvas.
+ *
+ * @remarks
+ * Provides the canvas element, its 2D context, the integer scale applied to upscale the virtual
+ * resolution, and a teardown helper to clean up event listeners.
+ *
+ * @example
+ * ```ts
+ * const context = bootstrapCanvas();
+ * context.teardown();
+ * ```
  */
 export interface RenderContext {
   canvas: HTMLCanvasElement;
@@ -12,6 +22,16 @@ export interface RenderContext {
 
 /**
  * Run loop handle used to control fixed-step rendering ticks.
+ *
+ * @remarks
+ * Call {@link RenderLoop.start} to begin the fixed-step loop and {@link RenderLoop.stop} to halt it.
+ *
+ * @example
+ * ```ts
+ * const loop = createRenderLoop(context, () => {});
+ * loop.start();
+ * loop.stop();
+ * ```
  */
 export interface RenderLoop {
   start(): void;
@@ -21,12 +41,18 @@ export interface RenderLoop {
 /**
  * Bootstraps a 256×144 canvas element and centers it within the provided root.
  *
- * Args:
- *   rootId (string): ID of the container element that should host the canvas. A div is created
- *     automatically when the element is missing.
+ * @remarks
+ * Creates or reuses a canvas beneath the specified root, enforces pixelated rendering, and wires up
+ * resize listeners to maintain integer scaling.
  *
- * Returns:
- *   RenderContext: Render context with the canvas, its 2D context, and the integer scale.
+ * @param rootId - ID of the container element that should host the canvas. A div is created
+ * automatically when the element is missing.
+ * @returns Render context with the canvas, its 2D context, and the integer scale.
+ * @throws Error when the browser does not support the 2D canvas context.
+ * @example
+ * ```ts
+ * const renderContext = bootstrapCanvas('game-root');
+ * ```
  */
 export function bootstrapCanvas(rootId = 'app'): RenderContext {
   const VIRTUAL_WIDTH = 256;
@@ -177,14 +203,22 @@ export function bootstrapCanvas(rootId = 'app'): RenderContext {
 /**
  * Creates a fixed-step render loop that repeatedly executes a tick callback.
  *
- * Args:
- *   _context (RenderContext): Render context associated with the loop. Currently unused but kept
- *     for parity with future integrations.
- *   tick ((frame: number) => void): Callback invoked on each fixed frame with the incrementing
- *     frame number.
+ * @remarks
+ * Locks updates to 60 Hz with an accumulator so long frames can catch up while capping total work
+ * per animation frame.
  *
- * Returns:
- *   RenderLoop: Start/stop controls for the render loop.
+ * @param _context - Render context associated with the loop. Currently unused but kept for parity
+ * with future integrations.
+ * @param tick - Callback invoked on each fixed frame with the incrementing frame number.
+ * @returns Start/stop controls for the render loop.
+ * @throws This function never throws; it relies on `requestAnimationFrame`.
+ * @example
+ * ```ts
+ * const loop = createRenderLoop(renderContext, (frame) => {
+ *   console.log('frame', frame);
+ * });
+ * loop.start();
+ * ```
  */
 export function createRenderLoop(
   _context: RenderContext,
@@ -204,8 +238,15 @@ export function createRenderLoop(
   /**
    * Advances the fixed-step loop, catching up with accumulated elapsed time.
    *
-   * Args:
-   *   timestamp (number): RequestAnimationFrame timestamp in milliseconds.
+   * @remarks
+   * Scheduled via `requestAnimationFrame` to maintain a fixed update cadence using an accumulator.
+   *
+   * @param timestamp - `requestAnimationFrame` timestamp in milliseconds.
+   * @throws This function never throws; it relies on browser timing APIs.
+   * @example
+   * ```ts
+   * // Invoked internally by the render loop; not called directly.
+   * ```
    */
   const step = (timestamp: number): void => {
     if (!running) {
@@ -270,9 +311,16 @@ export function createRenderLoop(
 /**
  * Renders a deterministic placeholder scene that showcases seeded randomness.
  *
- * Args:
- *   context (RenderContext): Canvas context used for drawing the placeholder.
- *   seed (RunSeed): Deterministic seed that governs the generated shapes.
+ * @remarks
+ * Clears the canvas, paints a grid backdrop, draws seeded rectangles, and annotates seed metadata.
+ *
+ * @param context - Canvas context used for drawing the placeholder.
+ * @param seed - Deterministic seed that governs the generated shapes.
+ * @throws This function never throws; rendering relies on standard canvas APIs.
+ * @example
+ * ```ts
+ * drawPlaceholderScene(renderContext, { value: 42 });
+ * ```
  */
 export function drawPlaceholderScene(context: RenderContext, seed: RunSeed): void {
   const { canvas, context: ctx, scale } = context;

@@ -3,9 +3,15 @@ import type { RunSeed } from '../shared/random';
 /**
  * Represents the reactive HUD metrics that rendering routines consume.
  *
- * Attributes:
- *   health: Current and maximum hit points for the player.
- *   seed: Deterministic run seed surfaced for debugging and sharing.
+ * @remarks
+ * The state mirrors the DOM overlay so rendering systems can adjust health and seed
+ * displays without querying gameplay state directly.
+ *
+ * @example
+ * ```ts
+ * const hudState = createHud(document.body);
+ * console.log(hudState.health.current);
+ * ```
  */
 export interface HudState {
   health: { current: number; max: number };
@@ -16,11 +22,18 @@ export interface HudState {
 /**
  * Creates the HUD overlay, attaches it to the provided root element, and returns the default state.
  *
- * Args:
- *   root (HTMLElement): DOM node that hosts the HUD. Its children are replaced with the overlay.
+ * @remarks
+ * The function clears existing children on the supplied root node, so pass a dedicated container.
  *
- * Returns:
- *   HudState: Baseline HUD snapshot that mirrors the initial DOM contents.
+ * @param root - DOM node that hosts the HUD overlay.
+ * @returns Baseline HUD snapshot that matches the rendered DOM contents.
+ * @throws This function never throws; DOM APIs synchronously return the created elements.
+ * @example
+ * ```ts
+ * const root = document.querySelector<HTMLElement>('#hud')!;
+ * const state = createHud(root);
+ * console.log(state.seed.value);
+ * ```
  */
 export function createHud(root: HTMLElement): HudState {
   const overlay = document.createElement('section');
@@ -69,8 +82,16 @@ export function createHud(root: HTMLElement): HudState {
 /**
  * Propagates the supplied HUD state into the overlay so the UI reflects the latest values.
  *
- * Args:
- *   state (HudState): Current HUD metrics to render.
+ * @remarks
+ * The update is idempotent: it only mutates text nodes when the incoming state differs,
+ * keeping DOM churn minimal during animation frames.
+ *
+ * @param state - Current HUD metrics to render in the overlay.
+ * @throws This function never throws; it becomes a no-op when the overlay cannot be located.
+ * @example
+ * ```ts
+ * updateHud({ health: { current: 5, max: 10 }, seed: { value: 314 } });
+ * ```
  */
 export function updateHud(state: HudState): void {
   const overlay = document.querySelector<HTMLElement>('[data-hud-layer="overlay"]');
@@ -99,8 +120,15 @@ export function updateHud(state: HudState): void {
 /**
  * Reveals the game-over overlay, highlighting the seed used for the failed run.
  *
- * Args:
- *   seed (RunSeed): Deterministic seed associated with the attempt.
+ * @remarks
+ * Lazily creates the game-over DOM nodes so the HUD only pays the setup cost once.
+ *
+ * @param seed - Deterministic seed associated with the current attempt.
+ * @throws This function never throws; missing HUD overlay simply short-circuits the update.
+ * @example
+ * ```ts
+ * showGameOver({ value: 9001 });
+ * ```
  */
 export function showGameOver(seed: RunSeed): void {
   const overlay = document.querySelector<HTMLElement>('[data-hud-layer="overlay"]');

@@ -12,8 +12,15 @@ const MAP_GRID_RESOURCE_KEY = 'resource.map-grid' as ResourceKey<MapGrid>;
 /**
  * Registers the chase AI system with the provided world instance.
  *
- * Args:
- *   world (World): ECS world that should host the system.
+ * @remarks
+ * Adds the `chaseSystem` to the world's system list so it runs once per update tick.
+ *
+ * @param world - ECS world that should host the system.
+ * @throws This function never throws; it delegates to `world.addSystem`.
+ * @example
+ * ```ts
+ * registerChaseSystem(world);
+ * ```
  */
 export const registerChaseSystem = (world: World): void => {
   world.addSystem(chaseSystem);
@@ -22,9 +29,19 @@ export const registerChaseSystem = (world: World): void => {
 /**
  * Moves enemies toward their targets based on line-of-sight and aggro rules.
  *
- * Args:
- *   world (World): ECS world to mutate.
- *   context (TickContext): Frame metadata containing delta time and RNG.
+ * @remarks
+ * Applies simple steering to entities tagged with `ChaseAIComponent`, respecting map collisions and
+ * frame delta to produce deterministic movement.
+ *
+ * @param world - ECS world to mutate.
+ * @param context - Frame metadata containing delta time and RNG.
+ * @throws This system never throws; missing stores short-circuit the update.
+ * @example
+ * ```ts
+ * import { createMulberry32 } from '../shared/random';
+ *
+ * chaseSystem(world, { delta: 16, frame: 1, rng: createMulberry32(0) });
+ * ```
  */
 export const chaseSystem: System = (world, context) => {
   // Abort when the navigation mesh is unavailable, e.g. during scene transitions.

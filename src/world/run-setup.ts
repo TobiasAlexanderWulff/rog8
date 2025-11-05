@@ -22,10 +22,15 @@ const PLAYER_STARTING_HEALTH = 5;
 /**
  * Output produced when a new run is initialised.
  *
- * Attributes:
- *   map: Generated tile grid and metadata for the run.
- *   playerEntityId: Identifier of the spawned player entity.
- *   enemyEntityIds: Entity identifiers for spawned enemies.
+ * @remarks
+ * Bundles the generated map together with entity identifiers so calling code can wire systems and
+ * UI state without re-querying the world.
+ *
+ * @example
+ * ```ts
+ * const result: RunBootstrapResult = bootstrapRun(world, { value: 0 });
+ * console.log(result.playerEntityId);
+ * ```
  */
 export interface RunBootstrapResult {
   map: GeneratedMap;
@@ -37,12 +42,19 @@ export interface RunBootstrapResult {
 /**
  * Constructs the initial world state for a new run.
  *
- * Args:
- *   world (World): ECS world to populate.
- *   seed (RunSeed): Seed that governs deterministic generation.
+ * @remarks
+ * Ensures component stores exist, generates the deterministic map, and spawns the player alongside
+ * seeded enemy entities.
  *
- * Returns:
- *   RunBootstrapResult: Identifiers and map data required to start the run.
+ * @param world - ECS world to populate.
+ * @param seed - Seed that governs deterministic generation.
+ * @returns Identifiers and map data required to start the run.
+ * @throws This function never throws; component store registration is guarded before use.
+ * @example
+ * ```ts
+ * const result = bootstrapRun(world, { value: 123 });
+ * console.log(result.map.metadata.playerSpawn);
+ * ```
  */
 export function bootstrapRun(world: World, seed: RunSeed): RunBootstrapResult {
   const ensureComponentStore = <T>(componentKey: ComponentKey<T>): void => {

@@ -3,6 +3,19 @@ import type { RNG } from '../shared/random';
 
 /**
  * Context passed to systems on each tick, exposing frame timing and deterministic RNG.
+ *
+ * @remarks
+ * Instances originate from the run controller and let systems coordinate deterministic behaviour
+ * based on a shared frame counter and pseudo-random generator.
+ *
+ * @example
+ * ```ts
+ * const mySystem: System = (_world, context) => {
+ *   if (context.frame % 2 === 0) {
+ *     // react on alternating frames
+ *   }
+ * };
+ * ```
  */
 export interface TickContext {
   delta: number;
@@ -13,14 +26,35 @@ export interface TickContext {
 /**
  * Fixed signature each system adheres to when mutating the world state.
  *
- * Args:
- *   world (World): Active world instance being updated.
- *   context (TickContext): Frame metadata for timing and RNG usage.
+ * @remarks
+ * Systems execute in registration order during `World.update`, receiving the mutable world and the
+ * current tick context for timing and deterministic randomness.
+ *
+ * @param world - Active world instance being updated.
+ * @param context - Frame metadata that conveys timing and RNG usage.
+ * @example
+ * ```ts
+ * const exampleSystem: System = (world, context) => {
+ *   if (context.delta > 0) {
+ *     // mutate world components here
+ *   }
+ * };
+ * ```
  */
 export type System = (world: World, context: TickContext) => void;
 
 /**
  * Minimal entity reference handled by the ECS runtime.
+ *
+ * @remarks
+ * Entity identifiers are issued via `World.createEntity` and remain stable until the entity is
+ * destroyed at the end of an update tick.
+ *
+ * @example
+ * ```ts
+ * const entity = world.createEntity();
+ * console.log(entity.id);
+ * ```
  */
 export interface Entity {
   id: EntityId;
@@ -34,6 +68,16 @@ export type ResourceKey<T = unknown> = string & {
 
 /**
  * Core ECS world that tracks entities, component stores, and registered systems.
+ *
+ * @remarks
+ * The world coordinates safe scheduling of component removals and entity destruction so systems
+ * can iterate over data without defensive copying.
+ *
+ * @example
+ * ```ts
+ * const world = new World();
+ * const entity = world.createEntity();
+ * ```
  */
 export class World {
   private systems: System[] = [];
@@ -51,8 +95,18 @@ export class World {
   /**
    * Allocates a new entity and assigns a unique identifier.
    *
-   * Returns:
-   *   Entity: Fresh entity backed by the internal entity map.
+   * @remarks
+   * New entities start without components; attach data via `addComponent` before systems attempt
+   * to read from them.
+   *
+   * @returns Fresh entity backed by the internal entity map.
+   * @throws This method never throws; it only touches internal bookkeeping.
+   * @example
+   * ```ts
+   * const transformKey = 'transform' as ComponentKey<{ x: number; y: number }>;
+   * const player = world.createEntity();
+   * world.addComponent(player, transformKey, { x: 0, y: 0 });
+   * ```
    */
   createEntity(): Entity {
     const entity: Entity = { id: this.nextEntityId++ };
@@ -63,8 +117,16 @@ export class World {
   /**
    * Schedules an entity for destruction together with all attached components.
    *
-   * Args:
-   *   entity (Entity | EntityId): Entity reference or identifier scheduled for removal.
+   * @remarks
+   * Destruction occurs after the current update tick finishes so ongoing system iterations remain
+   * safe.
+   *
+   * @param entity - Entity reference or identifier scheduled for removal.
+   * @throws This method never throws; missing entities are ignored.
+   * @example
+   * ```ts
+   * world.destroyEntity(player);
+   * ```
    */
   destroyEntity(entity: Entity | EntityId): void {
     const entityId = this.resolveEntityId(entity);
@@ -89,14 +151,18 @@ export class World {
   /**
    * Registers a component store so it can be referenced by systems.
    *
-   * Args:
-   *   componentName (ComponentKey<T>): Unique component key associated with the store.
+   * @remarks
+   * Register stores during bootstrap before attaching components to entities to ensure systems can
+   * resolve data consistently.
    *
-   * Returns:
-   *   ComponentStore<T>: Newly created component store.
-   *
-   * Throws:
-   *   Error: When a store for the component already exists.
+   * @param componentName - Unique component key associated with the store.
+   * @returns Newly created component store.
+   * @throws Error when a store for the component already exists.
+   * @example
+   * ```ts
+   * const transformKey = 'transform' as ComponentKey<{ x: number; y: number }>;
+   * const transformStore = world.registerComponentStore(transformKey);
+   * ```
    */
   registerComponentStore<T>(componentName: ComponentKey<T>): ComponentStore<T> {
     if (this.componentStores.has(componentName)) {
@@ -111,11 +177,18 @@ export class World {
   /**
    * Retrieves a component store if it has been registered previously.
    *
-   * Args:
-   *   componentName (ComponentKey<T>): Component identifier to look up.
+   * @remarks
+   * Returns `undefined` when the store has not been registered, allowing callers to bail out
+   * gracefully.
    *
-   * Returns:
-   *   ComponentStore<T> | undefined: Component store when available; otherwise undefined.
+   * @param componentName - Component identifier to look up.
+   * @returns Component store when available; otherwise `undefined`.
+   * @throws This method never throws; callers should handle an `undefined` result.
+   * @example
+   * ```ts
+   * const transformKey = 'transform' as ComponentKey<{ x: number; y: number }>;
+   * const store = world.getComponentStore(transformKey);
+   * ```
    */
   getComponentStore<T>(componentName: ComponentKey<T>): ComponentStore<T> | undefined {
     return this.componentStores.get(componentName) as ComponentStore<T> | undefined;
@@ -124,13 +197,19 @@ export class World {
   /**
    * Attaches a component instance to an entity.
    *
-   * Args:
-   *   entity (Entity | EntityId): Entity reference or identifier that owns the component.
-   *   componentName (ComponentKey<T>): Component key corresponding to the store.
-   *   component (T): Component data to attach.
+   * @remarks
+   * Pending removals for the same component are cleared automatically so a component can be
+   * re-added within the same tick.
    *
-   * Throws:
-   *   Error: When the entity is not alive or the store is absent.
+   * @param entity - Entity reference or identifier that owns the component.
+   * @param componentName - Component key corresponding to the store.
+   * @param component - Component data to attach.
+   * @throws Error when the entity is not alive or the store is absent.
+   * @example
+   * ```ts
+   * const transformKey = 'transform' as ComponentKey<{ x: number; y: number }>;
+   * world.addComponent(player, transformKey, { x: 0, y: 0 });
+   * ```
    */
   addComponent<T>(entity: Entity | EntityId, componentName: ComponentKey<T>, component: T): void {
     const entityId = this.resolveEntityId(entity);
@@ -152,12 +231,18 @@ export class World {
   /**
    * Checks whether an entity has a specific component attached.
    *
-   * Args:
-   *   entity (Entity | EntityId): Entity reference or identifier to query.
-   *   componentName (ComponentName): Component key to look up.
+   * @remarks
+   * The lookup short-circuits when the entity is unknown or scheduled for removal.
    *
-   * Returns:
-   *   boolean: True when the component exists on the entity.
+   * @param entity - Entity reference or identifier to query.
+   * @param componentName - Component key to look up.
+   * @returns `true` when the component exists on the entity.
+   * @throws This method never throws; it returns `false` for unknown entities or components.
+   * @example
+   * ```ts
+   * const transformKey = 'transform' as ComponentKey<{ x: number; y: number }>;
+   * const hasTransform = world.hasComponent(player, transformKey);
+   * ```
    */
   hasComponent(entity: Entity | EntityId, componentName: ComponentName): boolean {
     const entityId = this.resolveEntityId(entity);
@@ -172,12 +257,18 @@ export class World {
   /**
    * Retrieves component data attached to a specific entity.
    *
-   * Args:
-   *   entity (Entity | EntityId): Entity reference or identifier to inspect.
-   *   componentName (ComponentKey<T>): Component key to retrieve.
+   * @remarks
+   * Returns `undefined` when either the entity is absent or the component store lacks the data.
    *
-   * Returns:
-   *   T | undefined: Component data if present; otherwise undefined.
+   * @param entity - Entity reference or identifier to inspect.
+   * @param componentName - Component key to retrieve.
+   * @returns Component data if present; otherwise `undefined`.
+   * @throws This method never throws; callers should handle an `undefined` result.
+   * @example
+   * ```ts
+   * const transformKey = 'transform' as ComponentKey<{ x: number; y: number }>;
+   * const transform = world.getComponent(player, transformKey);
+   * ```
    */
   getComponent<T>(entity: Entity | EntityId, componentName: ComponentKey<T>): T | undefined {
     const entityId = this.resolveEntityId(entity);
@@ -192,9 +283,17 @@ export class World {
   /**
    * Removes a component immediately from an entity.
    *
-   * Args:
-   *   entity (Entity | EntityId): Entity reference or identifier whose component should be removed.
-   *   componentName (ComponentKey<T>): Component key to detach.
+   * @remarks
+   * Direct removal is safe for components that are not actively iterated in the current system.
+   *
+   * @param entity - Entity reference or identifier whose component should be removed.
+   * @param componentName - Component key to detach.
+   * @throws This method never throws; missing components are ignored.
+   * @example
+   * ```ts
+   * const transformKey = 'transform' as ComponentKey<{ x: number; y: number }>;
+   * world.removeComponent(player, transformKey);
+   * ```
    */
   removeComponent<T>(entity: Entity | EntityId, componentName: ComponentKey<T>): void {
     const entityId = this.resolveEntityId(entity);
@@ -212,9 +311,18 @@ export class World {
   /**
    * Defers component removal until after the current tick completes.
    *
-   * Args:
-   *   entity (Entity | EntityId): Entity reference or identifier queued for detachment.
-   *   componentName (ComponentKey<T>): Component key to remove.
+   * @remarks
+   * Use this helper when iterating over a component store and you need to remove the current entry
+   * without invalidating the iterator.
+   *
+   * @param entity - Entity reference or identifier queued for detachment.
+   * @param componentName - Component key to remove.
+   * @throws This method never throws; missing components are ignored.
+   * @example
+   * ```ts
+   * const transformKey = 'transform' as ComponentKey<{ x: number; y: number }>;
+   * world.queueRemoveComponent(player, transformKey);
+   * ```
    */
   queueRemoveComponent<T>(entity: Entity | EntityId, componentName: ComponentKey<T>): void {
     const entityId = this.resolveEntityId(entity);
@@ -224,8 +332,15 @@ export class World {
   /**
    * Registers a system that will run once per update tick.
    *
-   * Args:
-   *   system (System): System callback to register.
+   * @remarks
+   * Duplicate registrations are ignored so systems remain unique within the execution order.
+   *
+   * @param system - System callback to register.
+   * @throws This method never throws; duplicate systems are ignored.
+   * @example
+   * ```ts
+   * world.addSystem(playerMovementSystem);
+   * ```
    */
   addSystem(system: System): void {
     if (this.systems.includes(system)) {
@@ -237,12 +352,17 @@ export class World {
   /**
    * Registers a world-level singleton resource.
    *
-   * Args:
-   *   resourceKey (ResourceKey<T>): Identifier used by systems to locate the resource.
-   *   resource (T): Resource instance to store.
+   * @remarks
+   * Resources let systems share cross-cutting state, such as input buffers or configuration.
    *
-   * Throws:
-   *   Error: When a resource with the same key already exists.
+   * @param resourceKey - Identifier used by systems to locate the resource.
+   * @param resource - Resource instance to store.
+   * @throws Error when a resource with the same key already exists.
+   * @example
+   * ```ts
+   * const inputKey = 'input' as ResourceKey<{ pressedKeys: Set<string> }>;
+   * world.registerResource(inputKey, { pressedKeys: new Set() });
+   * ```
    */
   registerResource<T>(resourceKey: ResourceKey<T>, resource: T): void {
     if (this.resources.has(resourceKey)) {
@@ -254,11 +374,19 @@ export class World {
   /**
    * Checks whether a resource is registered on the world.
    *
-   * Args:
-   *   resourceKey (ResourceKey): Identifier tied to the resource.
+   * @remarks
+   * Helpful for optional systems that only operate when a supporting resource is present.
    *
-   * Returns:
-   *   boolean: True when the resource exists.
+   * @param resourceKey - Identifier tied to the resource.
+   * @returns `true` when the resource exists.
+   * @throws This method never throws; it returns `false` when the resource is absent.
+   * @example
+   * ```ts
+   * const inputKey = 'input' as ResourceKey<{ pressedKeys: Set<string> }>;
+   * if (!world.hasResource(inputKey)) {
+   *   // create resource or skip dependent systems
+   * }
+   * ```
    */
   hasResource(resourceKey: ResourceKey): boolean {
     return this.resources.has(resourceKey);
@@ -267,11 +395,17 @@ export class World {
   /**
    * Retrieves a resource when it has been registered.
    *
-   * Args:
-   *   resourceKey (ResourceKey<T>): Identifier tied to the resource.
+   * @remarks
+   * Returns `undefined` when the resource is absent so callers can fall back to defaults.
    *
-   * Returns:
-   *   T | undefined: Resource instance or undefined when absent.
+   * @param resourceKey - Identifier tied to the resource.
+   * @returns Resource instance or `undefined` when absent.
+   * @throws This method never throws; callers should handle an `undefined` result.
+   * @example
+   * ```ts
+   * const inputKey = 'input' as ResourceKey<{ pressedKeys: Set<string> }>;
+   * const input = world.getResource(inputKey);
+   * ```
    */
   getResource<T>(resourceKey: ResourceKey<T>): T | undefined {
     return this.resources.get(resourceKey) as T | undefined;
@@ -280,11 +414,17 @@ export class World {
   /**
    * Removes a resource and returns whether it existed.
    *
-   * Args:
-   *   resourceKey (ResourceKey): Identifier tied to the resource.
+   * @remarks
+   * Returns `false` when the resource was not tracked, letting callers detect redundant cleanup.
    *
-   * Returns:
-   *   boolean: True when the resource was removed.
+   * @param resourceKey - Identifier tied to the resource.
+   * @returns `true` when the resource was removed.
+   * @throws This method never throws; it returns `false` if the resource was missing.
+   * @example
+   * ```ts
+   * const inputKey = 'input' as ResourceKey<unknown>;
+   * world.removeResource(inputKey);
+   * ```
    */
   removeResource(resourceKey: ResourceKey): boolean {
     return this.resources.delete(resourceKey);
@@ -293,8 +433,19 @@ export class World {
   /**
    * Executes all registered systems with the provided tick context.
    *
-   * Args:
-   *   context (TickContext): Frame metadata that each system receives.
+   * @remarks
+   * Systems run sequentially in the order they were added, and deferred removals are flushed after
+   * every tick.
+   *
+   * @param context - Frame metadata that each system receives.
+   * @throws Propagates any error thrown by a registered system.
+   * @example
+   * ```ts
+   * import { createMulberry32 } from '../shared/random';
+   *
+   * const context: TickContext = { delta: 16, frame: 1, rng: createMulberry32(0) };
+   * world.update(context);
+   * ```
    */
   update(context: TickContext): void {
     for (const system of this.systems) {
@@ -306,8 +457,17 @@ export class World {
   }
 
   /**
-   * Clears entities, component state, pending queues, and resources while
-   * preserving registered systems and component stores.
+   * Clears entities, component state, pending queues, and resources while preserving registered
+   * systems and component stores.
+   *
+   * @remarks
+   * Use this when restarting a run without rebuilding the bootstrap scaffolding.
+   *
+   * @throws This method never throws; any registered systems and component stores remain intact.
+   * @example
+   * ```ts
+   * world.reset();
+   * ```
    */
   reset(): void {
     this.entities.clear();
@@ -325,6 +485,15 @@ export class World {
 
   /**
    * Applies any deferred component removals and updates bookkeeping structures.
+   *
+   * @remarks
+   * Triggered automatically after each update tick to keep stores and entity indices consistent.
+   *
+   * @throws This method never throws; it only mutates internal bookkeeping.
+   * @example
+   * ```ts
+   * // Invoked internally by world.update(context); manual calls are unnecessary.
+   * ```
    */
   private flushComponentRemovals(): void {
     if (this.pendingComponentRemovals.size === 0) {
@@ -351,6 +520,15 @@ export class World {
 
   /**
    * Removes entities that were marked for deletion after the current tick completed.
+   *
+   * @remarks
+   * Consolidates the deferred entity removal queue to maintain stable iteration semantics.
+   *
+   * @throws This method never throws; it only mutates internal bookkeeping.
+   * @example
+   * ```ts
+   * // Called internally by world.update(context); do not invoke directly.
+   * ```
    */
   private flushEntityRemovals(): void {
     if (this.pendingEntityRemovals.size === 0) {
@@ -368,9 +546,16 @@ export class World {
   /**
    * Updates component tracking after a component is removed from an entity.
    *
-   * Args:
-   *   entityId (EntityId): Identifier of the entity that lost a component.
-   *   componentName (ComponentName): Component key that was removed.
+   * @remarks
+   * Keeps the reverse lookup map synchronised so entity/component relationships remain accurate.
+   *
+   * @param entityId - Identifier of the entity that lost a component.
+   * @param componentName - Component key that was removed.
+   * @throws This method never throws; missing bookkeeping entries are ignored.
+   * @example
+   * ```ts
+   * // Invoked internally by component removal helpers.
+   * ```
    */
   private afterComponentRemoval(entityId: EntityId, componentName: ComponentName): void {
     const componentSet = this.componentsByEntity.get(entityId);
@@ -387,11 +572,16 @@ export class World {
   /**
    * Normalises an entity reference into a bare identifier.
    *
-   * Args:
-   *   entity (Entity | EntityId): Entity object or identifier.
+   * @remarks
+   * Accepts either entity objects or numeric identifiers to support ergonomic API surfaces.
    *
-   * Returns:
-   *   EntityId: Normalised entity ID.
+   * @param entity - Entity object or identifier.
+   * @returns Normalised entity ID.
+   * @throws This method never throws; its behaviour is purely functional.
+   * @example
+   * ```ts
+   * // Used internally by public world helpers that accept either form.
+   * ```
    */
   private resolveEntityId(entity: Entity | EntityId): EntityId {
     return typeof entity === 'number' ? entity : entity.id;
@@ -400,11 +590,15 @@ export class World {
   /**
    * Throws when an entity is missing or scheduled for removal.
    *
-   * Args:
-   *   entityId (EntityId): Identifier that should point to a live entity.
+   * @remarks
+   * Guards critical operations that must not operate on stale entity references.
    *
-   * Throws:
-   *   Error: If the entity is not tracked or queued for destruction.
+   * @param entityId - Identifier that should point to a live entity.
+   * @throws Error if the entity is not tracked or queued for destruction.
+   * @example
+   * ```ts
+   * // Used internally before mutating component stores.
+   * ```
    */
   private assertEntityAlive(entityId: EntityId): void {
     if (!this.entities.has(entityId) || this.pendingEntityRemovals.has(entityId)) {
@@ -415,14 +609,16 @@ export class World {
   /**
    * Retrieves a component store or throws when it has not been registered.
    *
-   * Args:
-   *   componentName (ComponentKey<T>): Component key tied to the store.
+   * @remarks
+   * Ensures systems fail fast when required component stores are absent.
    *
-   * Returns:
-   *   ComponentStore<T>: Component store associated with the key.
-   *
-   * Throws:
-   *   Error: If the store is missing.
+   * @param componentName - Component key tied to the store.
+   * @returns Component store associated with the key.
+   * @throws Error if the store is missing.
+   * @example
+   * ```ts
+   * // Internal guard before attaching or reading component data.
+   * ```
    */
   private requireComponentStore<T>(componentName: ComponentKey<T>): ComponentStore<T> {
     const store = this.getComponentStore<T>(componentName);
@@ -435,9 +631,16 @@ export class World {
   /**
    * Queues a component for removal while preserving safe iteration semantics.
    *
-   * Args:
-   *   entityId (EntityId): Entity identifier that owns the component.
-   *   componentName (ComponentName): Component key to remove.
+   * @remarks
+   * Allows systems to mark components for deletion without affecting the current iteration pass.
+   *
+   * @param entityId - Entity identifier that owns the component.
+   * @param componentName - Component key to remove.
+   * @throws This method never throws; it becomes a no-op when the component is absent.
+   * @example
+   * ```ts
+   * // Called by queueRemoveComponent to defer removal safely.
+   * ```
    */
   private queueComponentRemoval(entityId: EntityId, componentName: ComponentName): void {
     const store = this.getComponentStore(componentName);
@@ -457,12 +660,17 @@ export class World {
   /**
    * Produces a stable key for tracking deferred component removals.
    *
-   * Args:
-   *   entityId (EntityId): Entity identifier.
-   *   componentName (ComponentName): Component key.
+   * @remarks
+   * Combines the component name and entity identifier to guarantee uniqueness across frames.
    *
-   * Returns:
-   *   string: Stable composite key combining entity and component names.
+   * @param entityId - Entity identifier.
+   * @param componentName - Component key.
+   * @returns Stable composite key combining entity and component names.
+   * @throws This method never throws; it performs deterministic string formatting.
+   * @example
+   * ```ts
+   * // Internal helper used when scheduling deferred removals.
+   * ```
    */
   private toRemovalKey(entityId: EntityId, componentName: ComponentName): string {
     return `${componentName}:${entityId}`;
@@ -471,11 +679,18 @@ export class World {
   /**
    * Reports whether the world still considers an entity alive.
    *
-   * Args:
-   *   entity (Entity | EntityId): Entity reference or identifier.
+   * @remarks
+   * Useful for sanity checks inside systems that cache entity identifiers across frames.
    *
-   * Returns:
-   *   boolean: True when the entity exists and is not queued for removal.
+   * @param entity - Entity reference or identifier.
+   * @returns `true` when the entity exists and is not queued for removal.
+   * @throws This method never throws; unknown entities simply return `false`.
+   * @example
+   * ```ts
+   * if (!world.isEntityAlive(player)) {
+   *   // respawn or clean up references
+   * }
+   * ```
    */
   isEntityAlive(entity: Entity | EntityId): boolean {
     const entityId = this.resolveEntityId(entity);

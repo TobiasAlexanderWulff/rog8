@@ -416,11 +416,18 @@ type CanvasCall = CanvasMethodCall | CanvasPropertyCall;
 /**
  * Reports whether a captured canvas call originated from a method invocation.
  *
- * Args:
- *   call (CanvasCall): Call record captured from the spy context.
+ * @remarks
+ * Canvas spy helpers record both method calls and property writes; this narrows to method calls.
  *
- * Returns:
- *   boolean: True when the call corresponds to a canvas method.
+ * @param call - Call record captured from the spy context.
+ * @returns `true` when the call corresponds to a canvas method.
+ * @throws This function never throws; it inspects a discriminant field.
+ * @example
+ * ```ts
+ * if (isMethodCall(call)) {
+ *   // handle method-specific assertions
+ * }
+ * ```
  */
 function isMethodCall(call: CanvasCall): call is CanvasMethodCall {
   return call.kind === 'method';
@@ -429,11 +436,18 @@ function isMethodCall(call: CanvasCall): call is CanvasMethodCall {
 /**
  * Reports whether a captured canvas call originated from a property assignment.
  *
- * Args:
- *   call (CanvasCall): Call record captured from the spy context.
+ * @remarks
+ * Differentiates property writes from method calls in the captured spy history.
  *
- * Returns:
- *   boolean: True when the call corresponds to a canvas property write.
+ * @param call - Call record captured from the spy context.
+ * @returns `true` when the call corresponds to a canvas property write.
+ * @throws This function never throws; it inspects a discriminant field.
+ * @example
+ * ```ts
+ * if (isPropertyCall(call)) {
+ *   // assert property mutation
+ * }
+ * ```
  */
 function isPropertyCall(call: CanvasCall): call is CanvasPropertyCall {
   return call.kind === 'property';
@@ -442,9 +456,16 @@ function isPropertyCall(call: CanvasCall): call is CanvasPropertyCall {
 /**
  * Creates a spy canvas rendering context that records invoked methods and property mutations.
  *
- * Returns:
- *   { context: CanvasRenderingContext2D; calls: CanvasCall[] }: Spy context and captured call
- *   history.
+ * @remarks
+ * Generates a mock 2D context whose methods push entries into an array for later inspection.
+ *
+ * @returns Spy context and captured call history.
+ * @throws This function never throws; it creates a plain object proxy.
+ * @example
+ * ```ts
+ * const { context, calls } = createCanvasContextSpy();
+ * context.fillRect(0, 0, 10, 10);
+ * ```
  */
 function createCanvasContextSpy(): { context: CanvasRenderingContext2D; calls: CanvasCall[] } {
   const calls: CanvasCall[] = [];

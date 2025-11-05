@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { System, World, TickContext, ResourceKey } from '../engine/world';
 import type { ComponentKey, HealthComponent, VelocityComponent } from '../engine/components';
 import type { EnemyComponent } from './enemy';
@@ -5,10 +6,14 @@ import type { EnemyComponent } from './enemy';
 /**
  * Snapshot of the impulse applied to a target after a melee hit.
  *
- * Attributes:
- *   directionX: Unit-length x component; sanitized to 0 when invalid.
- *   directionY: Unit-length y component; sanitized to 0 when invalid.
- *   magnitude: Force multiplier applied along the direction vector.
+ * @remarks
+ * Direction components are clamped to safe numeric values so downstream code can assume finite
+ * values when updating velocity.
+ *
+ * @example
+ * ```ts
+ * const impulse: KnockbackImpulse = { directionX: 1, directionY: 0, magnitude: 2 };
+ * ```
  */
 export interface KnockbackImpulse {
   directionX: number;
@@ -19,11 +24,14 @@ export interface KnockbackImpulse {
 /**
  * Event describing an attacker striking a target.
  *
- * Attributes:
- *   attackerId: Entity identifier for the aggressor.
- *   targetId: Entity identifier for the victim.
- *   damage: Requested damage; sanitized before resolution.
- *   knockback: Optional impulse applied when supplied.
+ * @remarks
+ * Attack payloads are sanitized before they are processed so malformed data cannot crash combat
+ * systems.
+ *
+ * @example
+ * ```ts
+ * const event: MeleeAttackEvent = { attackerId: 1, targetId: 2, damage: 3 };
+ * ```
  */
 export interface MeleeAttackEvent {
   attackerId: number;
@@ -46,11 +54,16 @@ const DEFAULT_MELEE_DAMAGE = 1;
 /**
  * Installs the melee combat system on the provided world instance.
  *
- * The function ensures a shared queue resource exists, clears stale events, and
- * registers a dispatch callback that sanitizes attack payloads before enqueueing.
+ * @remarks
+ * Ensures a shared attack queue resource exists, clears stale events, and registers a dispatch
+ * callback that sanitizes attack payloads before enqueueing.
  *
- * Args:
- *   world (World): ECS world that hosts systems and components.
+ * @param world - ECS world that hosts systems and components.
+ * @throws Error when an existing melee attack queue resource has an unexpected shape.
+ * @example
+ * ```ts
+ * registerMeleeSystem(world);
+ * ```
  */
 export const registerMeleeSystem = (world: World): void => {
   const existingQueue = world.getResource(MELEE_ATTACK_QUEUE_KEY);
@@ -105,12 +118,19 @@ export const registerMeleeSystem = (world: World): void => {
 /**
  * Resolves queued melee attack events and updates combat state.
  *
- * The system applies damage, enforces enemy damage overrides, mutates target
- * velocities when knockback is present, and finally drains the queue.
+ * @remarks
+ * Applies damage, enforces enemy overrides, handles knockback velocity mutations, and drains the
+ * queue once processing completes.
  *
- * Args:
- *   world (World): ECS world being updated.
- *   context (TickContext): Frame metadata including delta and RNG.
+ * @param world - ECS world being updated.
+ * @param context - Frame metadata including delta and RNG.
+ * @throws This system never throws; malformed attack payloads are sanitized before use.
+ * @example
+ * ```ts
+ * import { createMulberry32 } from '../shared/random';
+ *
+ * meleeSystem(world, { delta: 16, frame: 10, rng: createMulberry32(0) });
+ * ```
  */
 export const meleeSystem: System = (world, context) => {
   const queue = world.getResource(MELEE_ATTACK_QUEUE_KEY);
