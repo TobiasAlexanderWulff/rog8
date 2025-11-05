@@ -12,6 +12,8 @@ Enable Corepack and pin pnpm via `corepack use pnpm@10.19.0`, then run `pnpm ins
 
 Follow Prettier + ESLint defaults: two-space indentation, semicolons, single quotes. Use camelCase for variables and systems, PascalCase for classes and ECS components, and kebab-case for files (`status-effects.ts`). Prefer explicit types over `any` and keep systems pure to preserve deterministic seeds.
 
+- Document TypeScript APIs with full [TSDoc](https://tsdoc.org/) syntax. When adding or editing docstrings, prefer `/** ... */` blocks that include `@remarks`, `@example`, `@throws`, and other relevant tags so consumers get complete IntelliSense context. Fully leverage TSDoc sections to capture invariants, side effects, and usage patterns, demoting legacy JSDoc-style `@param`/`@returns` usage unless required for clarity—translate guidance into canonical TSDoc tags instead.
+
 ## Versioning & Core Docs
 
 Bump `package.json` with Semantic Versioning for every shipped change and tag releases. Document major features or mechanics in `docs/` and maintain them. Keep the root `README.md` as the authoritative quickstart and `.gitignore` trimmed so generated sprites, builds, and logs stay out of version control.
