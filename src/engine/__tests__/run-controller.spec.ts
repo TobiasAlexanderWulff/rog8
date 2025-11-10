@@ -5,7 +5,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { RunController, type RunState } from '../run-controller';
 import { World, type ResourceKey } from '../world';
-import { InputManager } from '../input';
+import { InputManager, type FrameInputState, type KeyBinding } from '../input';
 import { createMulberry32 } from '../../shared/random';
 import type {
   ComponentKey,
@@ -15,6 +15,15 @@ import type {
   VelocityComponent,
 } from '../components';
 import { createEnemyComponent, type EnemyComponent } from '../../combat/enemy';
+
+function simulateKeyPress(manager: InputManager, key: KeyBinding, frame: number): void {
+  const internals = manager as unknown as {
+    pressedFrames: Map<KeyBinding, number>;
+    frameState: FrameInputState;
+  };
+  internals.pressedFrames.set(key, frame);
+  internals.frameState.frame = frame;
+}
 
 describe('RunController', () => {
   /**
@@ -256,5 +265,31 @@ describe('RunController', () => {
     controller.restart();
 
     expect(onRestart).toHaveBeenCalledTimes(1);
+  });
+
+  it('listens for restart input while in the game-over state', () => {
+    const targetDeltaMs = 16;
+    const seedValue = 9001;
+    const world = new World();
+    const input = new InputManager();
+    const onRestart = vi.fn();
+
+    const controller = new RunController(world, input, {
+      targetDeltaMs,
+      seed: { value: seedValue },
+      events: { onRestart },
+    });
+
+    controller.start();
+    controller.triggerGameOver();
+
+    const internals = controller as unknown as { state: RunState; frame: number };
+    expect(internals.state).toBe('game-over');
+
+    simulateKeyPress(input, 'KeyR', internals.frame);
+    controller.update(targetDeltaMs);
+
+    expect(onRestart).toHaveBeenCalledTimes(1);
+    expect(internals.state).toBe('playing');
   });
 });

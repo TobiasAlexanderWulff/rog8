@@ -182,7 +182,8 @@ export class RunController {
    *
    * @remarks
    * Accumulates elapsed time and advances the world in deterministic steps sized by
-   * `targetDeltaMs`.
+   * `targetDeltaMs`. When the run has ended, the method still polls input so players can restart
+   * without refreshing.
    *
    * @param delta - Elapsed milliseconds since the previous update invocation.
    * @throws This method never throws; non-positive deltas are ignored.
@@ -192,10 +193,14 @@ export class RunController {
    * ```
    */
   update(delta: number): void {
-    if (this.state !== 'playing') {
+    if (delta <= 0) {
       return;
     }
-    if (delta <= 0) {
+    if (this.state === 'game-over') {
+      this.processGameOverInput();
+      return;
+    }
+    if (this.state !== 'playing') {
       return;
     }
 
@@ -298,6 +303,29 @@ export class RunController {
   private ensureComponentStore<T>(componentKey: ComponentKey<T>): void {
     if (!this.world.getComponentStore(componentKey)) {
       this.world.registerComponentStore(componentKey);
+    }
+  }
+
+  /**
+   * Processes restart input while the run sits on the game-over screen.
+   *
+   * @remarks
+   * Continues to advance the frame counter so input queries remain consistent even when the world
+   * is paused.
+   *
+   * @example
+   * ```ts
+   * controller.update(delta); // when state === 'game-over'
+   * ```
+   */
+  private processGameOverInput(): void {
+    const frame = this.frame;
+    this.input.beginFrame(frame);
+    this.frame = frame + 1;
+
+    if (this.input.isPressed('KeyR')) {
+      this.restart();
+      this.start();
     }
   }
 }
