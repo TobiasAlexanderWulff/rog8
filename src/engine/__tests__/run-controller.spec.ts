@@ -15,6 +15,7 @@ import type {
   VelocityComponent,
 } from '../components';
 import { createEnemyComponent, type EnemyComponent } from '../../combat/enemy';
+import type { MapGrid } from '../../world/mapgen/simple';
 
 function simulateKeyPress(manager: InputManager, key: KeyBinding, frame: number): void {
   const internals = manager as unknown as {
@@ -44,12 +45,40 @@ describe('RunController', () => {
     );
   });
 
+  it('exposes live player snapshots for HUD consumers', () => {
+    const world = new World();
+    const input = new InputManager();
+    const controller = new RunController(world, input, {
+      targetDeltaMs: 16,
+      seed: { value: 111 },
+    });
+
+    expect(controller.getPlayerSnapshot()).toBeUndefined();
+
+    controller.start();
+    const firstSnapshot = controller.getPlayerSnapshot();
+    expect(firstSnapshot).toBeDefined();
+
+    const healthKey = 'component.health' as ComponentKey<HealthComponent>;
+    const playerHealth = firstSnapshot
+      ? world.getComponent(firstSnapshot.entityId, healthKey)
+      : undefined;
+    expect(firstSnapshot?.health).toBe(playerHealth);
+
+    if (playerHealth) {
+      playerHealth.current = 2;
+    }
+
+    const updatedSnapshot = controller.getPlayerSnapshot();
+    expect(updatedSnapshot?.health.current).toBe(2);
+  });
+
   /**
    * Confirms that invoking start seeds all canonical entities and injects core resources.
    *
    * @returns {void}
    */
-  it('spawns core entities and registers resources on start', () => {
+  it('bootstraps the world via run setup and exposes the player snapshot', () => {
     const world = new World();
     const input = new InputManager();
     const controller = new RunController(world, input, {
@@ -60,24 +89,43 @@ describe('RunController', () => {
     controller.start();
 
     const inputResourceKey = 'engine.input-manager' as ResourceKey<InputManager>;
+    const mapGridResourceKey = 'resource.map-grid' as ResourceKey<MapGrid>;
     const transformKey = 'component.transform' as ComponentKey<TransformComponent>;
     const velocityKey = 'component.velocity' as ComponentKey<VelocityComponent>;
     const healthKey = 'component.health' as ComponentKey<HealthComponent>;
     const playerKey = 'component.player' as ComponentKey<PlayerComponent>;
     const enemyKey = 'component.enemy' as ComponentKey<EnemyComponent>;
 
+    const run = controller.getCurrentRun();
+    expect(run).toBeDefined();
     expect(world.getResource(inputResourceKey)).toBe(input);
+    expect(world.getResource(mapGridResourceKey)).toBe(run?.map.grid);
 
-    const playerId = 1;
-    expect(world.getComponent(playerId, transformKey)).toEqual({ x: 0, y: 0 });
-    expect(world.getComponent(playerId, velocityKey)).toEqual({ vx: 0, vy: 0 });
-    expect(world.getComponent(playerId, healthKey)).toEqual({ current: 5, max: 5 });
-    expect(world.getComponent(playerId, playerKey)).toEqual({ name: 'Player' });
+    if (!run) {
+      throw new Error('Run bootstrap result missing');
+    }
 
-    const enemyId = 2;
-    expect(world.getComponent(enemyId, transformKey)).toEqual({ x: 5, y: 5 });
-    expect(world.getComponent(enemyId, healthKey)).toEqual({ current: 1, max: 1 });
-    expect(world.getComponent(enemyId, enemyKey)).toEqual(createEnemyComponent('grunt'));
+    const playerTransform = world.getComponent(run.playerEntityId, transformKey);
+    const playerVelocity = world.getComponent(run.playerEntityId, velocityKey);
+    const playerHealth = world.getComponent(run.playerEntityId, healthKey);
+
+    expect(playerTransform).toEqual(run.map.metadata.playerSpawn);
+    expect(playerVelocity).toEqual({ vx: 0, vy: 0 });
+    expect(playerHealth).toEqual({ current: 5, max: 5 });
+    expect(world.getComponent(run.playerEntityId, playerKey)).toEqual({ name: 'Player' });
+
+    expect(run.enemyEntityIds.length).toBe(run.map.metadata.enemySpawns.length);
+    run.enemyEntityIds.forEach((enemyId, index) => {
+      const spawn = run.map.metadata.enemySpawns[index];
+      expect(world.getComponent(enemyId, transformKey)).toEqual(spawn);
+      expect(world.getComponent(enemyId, healthKey)).toEqual({ current: 1, max: 1 });
+      expect(world.getComponent(enemyId, enemyKey)).toEqual(createEnemyComponent('grunt'));
+    });
+
+    const snapshot = controller.getPlayerSnapshot();
+    expect(snapshot).toBeDefined();
+    expect(snapshot?.entityId).toBe(run.playerEntityId);
+    expect(snapshot?.health).toBe(playerHealth);
   });
 
   it('ignores subsequent start calls after entering the playing state', () => {
@@ -110,8 +158,6 @@ describe('RunController', () => {
     expect(world.getComponentStore(healthKey)?.entries()).toEqual(healthSnapshot);
     expect(world.getComponentStore(playerKey)?.entries()).toEqual(playerSnapshot);
     expect(world.getComponentStore(enemyKey)?.entries()).toEqual(enemySnapshot);
-
-    expect(world.getComponent(3, transformKey)).toBeUndefined();
   });
 
   /**

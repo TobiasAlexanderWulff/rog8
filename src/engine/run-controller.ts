@@ -1,14 +1,8 @@
 import { createMulberry32, RunSeed } from '../shared/random';
 import type { RNG } from '../shared/random';
 import { World, TickContext, type ResourceKey } from './world';
-import type {
-  ComponentKey,
-  HealthComponent,
-  PlayerComponent,
-  TransformComponent,
-  VelocityComponent,
-} from './components';
-import { createEnemyComponent, type EnemyComponent } from '../combat/enemy';
+import type { ComponentKey, HealthComponent } from './components';
+import { bootstrapRun, type RunBootstrapResult } from '../world/run-setup';
 import { InputManager } from './input';
 
 /**
@@ -35,6 +29,12 @@ export type RunState = 'init' | 'playing' | 'game-over';
  * const options: RunControllerOptions = { seed: { value: 0 }, targetDeltaMs: 16 };
  * ```
  */
+export interface RunControllerOptions {
+  seed: RunSeed;
+  targetDeltaMs: number;
+  events?: RunControllerEvents;
+}
+
 /**
  * Lifecycle callbacks invoked by the {@link RunController} when key transitions occur.
  *
@@ -55,10 +55,24 @@ export interface RunControllerEvents {
   onRestart?(): void;
 }
 
-export interface RunControllerOptions {
-  seed: RunSeed;
-  targetDeltaMs: number;
-  events?: RunControllerEvents;
+/**
+ * Snapshot describing the player entity for HUD and gameplay orchestration.
+ *
+ * @remarks
+ * Provides the entity identifier alongside the mutable health component reference attached to the
+ * world so callers can reflect the player's latest vitals.
+ *
+ * @example
+ * ```ts
+ * const snapshot = controller.getPlayerSnapshot();
+ * if (snapshot) {
+ *   console.log(snapshot.health.current);
+ * }
+ * ```
+ */
+export interface PlayerSnapshot {
+  entityId: number;
+  health: HealthComponent;
 }
 
 /**
@@ -86,18 +100,11 @@ export class RunController {
   private rng: RNG;
   private readonly options: RunControllerOptions;
   private readonly events?: RunControllerEvents;
+  private currentRun?: RunBootstrapResult;
 
   private static readonly INPUT_RESOURCE_KEY = 'engine.input-manager' as ResourceKey<InputManager>;
-  private static readonly TRANSFORM_COMPONENT_KEY =
-    'component.transform' as ComponentKey<TransformComponent>;
-  private static readonly VELOCITY_COMPONENT_KEY =
-    'component.velocity' as ComponentKey<VelocityComponent>;
   private static readonly HEALTH_COMPONENT_KEY =
     'component.health' as ComponentKey<HealthComponent>;
-  private static readonly PLAYER_COMPONENT_KEY =
-    'component.player' as ComponentKey<PlayerComponent>;
-  private static readonly ENEMY_COMPONENT_KEY = 'component.enemy' as ComponentKey<EnemyComponent>;
-  private static readonly PLAYER_STARTING_HEALTH = 5;
 
   /**
    * Builds a controller that keeps world updates deterministic for a given seed.
@@ -150,30 +157,7 @@ export class RunController {
       return;
     }
 
-    this.ensureComponentStore(RunController.TRANSFORM_COMPONENT_KEY);
-    this.ensureComponentStore(RunController.VELOCITY_COMPONENT_KEY);
-    this.ensureComponentStore(RunController.HEALTH_COMPONENT_KEY);
-    this.ensureComponentStore(RunController.PLAYER_COMPONENT_KEY);
-    this.ensureComponentStore(RunController.ENEMY_COMPONENT_KEY);
-
-    const player = this.world.createEntity();
-    this.world.addComponent(player, RunController.TRANSFORM_COMPONENT_KEY, { x: 0, y: 0 });
-    this.world.addComponent(player, RunController.VELOCITY_COMPONENT_KEY, { vx: 0, vy: 0 });
-    this.world.addComponent(player, RunController.HEALTH_COMPONENT_KEY, {
-      current: RunController.PLAYER_STARTING_HEALTH,
-      max: RunController.PLAYER_STARTING_HEALTH,
-    });
-    this.world.addComponent(player, RunController.PLAYER_COMPONENT_KEY, { name: 'Player' });
-
-    const enemy = this.world.createEntity();
-    const enemyComponent = createEnemyComponent('grunt');
-    this.world.addComponent(enemy, RunController.TRANSFORM_COMPONENT_KEY, { x: 5, y: 5 });
-    this.world.addComponent(enemy, RunController.HEALTH_COMPONENT_KEY, {
-      current: enemyComponent.maxHp,
-      max: enemyComponent.maxHp,
-    });
-    this.world.addComponent(enemy, RunController.ENEMY_COMPONENT_KEY, enemyComponent);
-
+    this.currentRun = bootstrapRun(this.world, this.seed);
     this.state = 'playing';
   }
 
@@ -264,8 +248,64 @@ export class RunController {
     this.accumulator = 0;
     this.state = 'init';
     this.rng = createMulberry32(originalSeed);
+    this.currentRun = undefined;
     this.registerCoreResources();
     this.events?.onRestart?.();
+  }
+
+  /**
+   * Returns the metadata captured when the current run was bootstrapped.
+   *
+   * @remarks
+   * Consumers should treat the returned reference as read-only; the controller reuses the stored
+   * object across the run so caller mutations would desynchronise internal state.
+   *
+   * @returns Run bootstrap data when the controller has started; otherwise `undefined`.
+   * @throws This method never throws; callers should handle the `undefined` case while in `init`.
+   * @example
+   * ```ts
+   * const run = controller.getCurrentRun();
+   * console.log(run?.playerEntityId);
+   * ```
+   */
+  getCurrentRun(): RunBootstrapResult | undefined {
+    return this.currentRun;
+  }
+
+  /**
+   * Retrieves the current player handle and health component reference.
+   *
+   * @remarks
+   * Provides HUD and gameplay systems with a stable identifier that survives component store
+   * re-registration between runs.
+   *
+   * @returns Player snapshot containing the entity id and mutable health component.
+   * @throws This method never throws; it returns `undefined` until the run has started.
+   * @example
+   * ```ts
+   * const player = controller.getPlayerSnapshot();
+   * if (player) {
+   *   console.log(player.health.current);
+   * }
+   * ```
+   */
+  getPlayerSnapshot(): PlayerSnapshot | undefined {
+    if (!this.currentRun) {
+      return undefined;
+    }
+
+    const health = this.world.getComponent(
+      this.currentRun.playerEntityId,
+      RunController.HEALTH_COMPONENT_KEY,
+    );
+    if (!health) {
+      return undefined;
+    }
+
+    return {
+      entityId: this.currentRun.playerEntityId,
+      health,
+    };
   }
 
   /**
@@ -283,26 +323,6 @@ export class RunController {
   private registerCoreResources(): void {
     if (!this.world.hasResource(RunController.INPUT_RESOURCE_KEY)) {
       this.world.registerResource(RunController.INPUT_RESOURCE_KEY, this.input);
-    }
-  }
-
-  /**
-   * Registers a component store if the world does not yet track the component type.
-   *
-   * @remarks
-   * Prevents duplicate registrations by checking for an existing store before invoking
-   * `registerComponentStore`.
-   *
-   * @param componentKey - Identifier for the component store to ensure.
-   * @throws This method never throws; redundant registrations are avoided.
-   * @example
-   * ```ts
-   * // Called internally before attaching components to new entities.
-   * ```
-   */
-  private ensureComponentStore<T>(componentKey: ComponentKey<T>): void {
-    if (!this.world.getComponentStore(componentKey)) {
-      this.world.registerComponentStore(componentKey);
     }
   }
 
