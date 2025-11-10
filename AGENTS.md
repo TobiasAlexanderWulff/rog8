@@ -42,3 +42,5 @@ If a task widens, split it, capture sub-plans, and reflect scope changes in `doc
 ## Commit & Pull Request Guidelines
 
 Stick to Conventional Commits (`feat: add roguelike map generator`) and keep each commit focused on one system or bug fix. When you open a PR or push to a hosted remote, include a concise summary, attach screenshots or GIFs for visual tweaks, and note playtest seeds plus any doc sections you updated.
+
+- After completing a task, if uncommitted changes remain, suggest an appropriate Conventional Commit message alongside the handoff so follow-up commits stay consistent.
