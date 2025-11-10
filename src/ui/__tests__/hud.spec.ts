@@ -3,7 +3,7 @@
  */
 import { afterEach, beforeEach, describe, it, vi } from 'vitest';
 
-import { createHud, showGameOver, updateHud } from '../hud';
+import { createHud, hideGameOver, showGameOver, updateHud } from '../hud';
 import { setupBrowserEnv } from '../../shared/testing/setup-browser-env';
 
 let cleanup: (() => void) | undefined;
@@ -126,5 +126,30 @@ describe('showGameOver', () => {
     expect(instructions?.textContent).toBe('Press R to restart');
 
     expect(overlay?.lastElementChild).toBe(container);
+  });
+});
+
+describe('hideGameOver', () => {
+  it('removes the game-over overlay when present', () => {
+    const rootElement = document.querySelector<HTMLDivElement>('#hud-root');
+    expect(rootElement).not.toBeNull();
+    const root = rootElement as HTMLDivElement;
+
+    createHud(root);
+
+    const overlay = root.querySelector<HTMLElement>('[data-hud-layer="overlay"]');
+    expect(overlay).not.toBeNull();
+
+    const seed = { value: 1010 };
+    showGameOver(seed);
+
+    let container = overlay?.querySelector<HTMLElement>('[data-hud-game-over="true"]');
+    expect(container).not.toBeNull();
+
+    hideGameOver();
+
+    container = overlay?.querySelector<HTMLElement>('[data-hud-game-over="true"]');
+    expect(container).toBeNull();
+    expect(overlay?.childElementCount).toBe(2);
   });
 });

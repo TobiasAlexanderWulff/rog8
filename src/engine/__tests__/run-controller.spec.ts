@@ -226,4 +226,35 @@ describe('RunController', () => {
 
     expect(rngSamples).toEqual(firstRunSamples);
   });
+
+  it('invokes lifecycle event hooks on game over and restart', () => {
+    const targetDeltaMs = 16;
+    const seedValue = 5150;
+    const world = new World();
+    const input = new InputManager();
+    const onGameOver = vi.fn();
+    const onRestart = vi.fn();
+
+    const controller = new RunController(world, input, {
+      targetDeltaMs,
+      seed: { value: seedValue },
+      events: {
+        onGameOver,
+        onRestart,
+      },
+    });
+
+    controller.start();
+    controller.triggerGameOver();
+
+    expect(onGameOver).toHaveBeenCalledTimes(1);
+    expect(onGameOver).toHaveBeenCalledWith({ value: seedValue });
+
+    controller.triggerGameOver();
+    expect(onGameOver).toHaveBeenCalledTimes(1);
+
+    controller.restart();
+
+    expect(onRestart).toHaveBeenCalledTimes(1);
+  });
 });

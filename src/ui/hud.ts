@@ -173,3 +173,28 @@ export function showGameOver(seed: RunSeed): void {
     }
   }
 }
+
+/**
+ * Removes the game-over overlay so a restarted run presents the base HUD again.
+ *
+ * @remarks
+ * Only mutates the DOM when the game-over container exists, keeping restarts idempotent when the
+ * overlay has not been shown yet.
+ *
+ * @throws This function never throws; it silently returns when the overlay cannot be found.
+ * @example
+ * ```ts
+ * hideGameOver();
+ * ```
+ */
+export function hideGameOver(): void {
+  const overlay = document.querySelector<HTMLElement>('[data-hud-layer="overlay"]');
+  if (!overlay) {
+    return;
+  }
+
+  const container = overlay.querySelector<HTMLElement>('[data-hud-game-over="true"]');
+  if (container) {
+    overlay.removeChild(container);
+  }
+}

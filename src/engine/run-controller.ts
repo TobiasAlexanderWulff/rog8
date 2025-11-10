@@ -35,9 +35,30 @@ export type RunState = 'init' | 'playing' | 'game-over';
  * const options: RunControllerOptions = { seed: { value: 0 }, targetDeltaMs: 16 };
  * ```
  */
+/**
+ * Lifecycle callbacks invoked by the {@link RunController} when key transitions occur.
+ *
+ * @remarks
+ * Hooks allow presentation layers to react to engine events without the controller importing UI
+ * modules directly.
+ *
+ * @example
+ * ```ts
+ * const events: RunControllerEvents = {
+ *   onGameOver: (seed) => console.log(`Run failed with seed ${seed.value}`),
+ *   onRestart: () => console.log('Run restarting'),
+ * };
+ * ```
+ */
+export interface RunControllerEvents {
+  onGameOver?(seed: RunSeed): void;
+  onRestart?(): void;
+}
+
 export interface RunControllerOptions {
   seed: RunSeed;
   targetDeltaMs: number;
+  events?: RunControllerEvents;
 }
 
 /**
@@ -64,6 +85,7 @@ export class RunController {
   private seed: RunSeed;
   private rng: RNG;
   private readonly options: RunControllerOptions;
+  private readonly events?: RunControllerEvents;
 
   private static readonly INPUT_RESOURCE_KEY = 'engine.input-manager' as ResourceKey<InputManager>;
   private static readonly TRANSFORM_COMPONENT_KEY =
@@ -103,6 +125,7 @@ export class RunController {
       targetDeltaMs: options.targetDeltaMs,
       seed: { value: options.seed.value },
     };
+    this.events = options.events ? { ...options.events } : undefined;
     this.state = 'init';
     this.frame = 0;
     this.seed = { value: this.options.seed.value };
@@ -212,6 +235,8 @@ export class RunController {
 
     this.accumulator = this.options.targetDeltaMs;
     this.state = 'game-over';
+    const seed = { value: this.seed.value };
+    this.events?.onGameOver?.(seed);
   }
 
   /**
@@ -235,6 +260,7 @@ export class RunController {
     this.state = 'init';
     this.rng = createMulberry32(originalSeed);
     this.registerCoreResources();
+    this.events?.onRestart?.();
   }
 
   /**

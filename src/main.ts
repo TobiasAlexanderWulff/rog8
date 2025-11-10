@@ -1,8 +1,8 @@
 import { bootstrapCanvas, createRenderLoop, drawPlaceholderScene } from './render/bootstrap';
 import { InputManager } from './engine/input';
 import { World } from './engine/world';
-import { RunController } from './engine/run-controller';
-import { createHud, showGameOver, type HudState } from './ui/hud';
+import { RunController, type RunControllerEvents } from './engine/run-controller';
+import { createHud, hideGameOver, showGameOver, type HudState } from './ui/hud';
 import { RunSeed } from './shared/random';
 import { syncHud } from './ui/hud-sync';
 
@@ -48,14 +48,23 @@ function main(): void {
   const world = new World();
   const input = new InputManager();
   const targetDeltaMs = 1000 / 60;
+  const lifecycleEvents: RunControllerEvents = {
+    onGameOver(seed: RunSeed) {
+      showGameOver(seed);
+    },
+    onRestart() {
+      hideGameOver();
+    },
+  };
+
   const controller = new RunController(world, input, {
     seed,
     targetDeltaMs,
+    events: lifecycleEvents,
   });
 
   const hudRoot = document.getElementById('hud');
   let hudState: HudState | undefined;
-  let wasGameOver = false;
   if (hudRoot) {
     hudState = createHud(hudRoot);
   }
@@ -65,21 +74,14 @@ function main(): void {
     drawPlaceholderScene(renderContext, seed);
 
     if (hudState) {
-      const isGameOver = syncHud(world, hudState, seed);
-      if (isGameOver && !wasGameOver) {
-        showGameOver(seed);
-      }
-      wasGameOver = isGameOver;
+      syncHud(world, hudState, seed);
     }
   });
 
   controller.start();
 
   if (hudState) {
-    wasGameOver = syncHud(world, hudState, seed);
-    if (wasGameOver) {
-      showGameOver(seed);
-    }
+    syncHud(world, hudState, seed);
   }
 
   loop.start();
