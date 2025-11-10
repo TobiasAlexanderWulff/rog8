@@ -1,17 +1,37 @@
-import {
-  bootstrapCanvas,
-  createRenderLoop,
-  drawPlaceholderScene,
-  type RenderContext,
-} from './render/bootstrap';
+import { bootstrapCanvas, createRenderLoop, type RenderContext } from './render/bootstrap';
 import { InputManager } from './engine/input';
-import { World } from './engine/world';
+import { World, type ResourceKey } from './engine/world';
 import { RunController, type RunControllerEvents } from './engine/run-controller';
 import { createHud, hideGameOver, showGameOver, type HudState } from './ui/hud';
 import { RunSeed } from './shared/random';
 import { syncHud } from './ui/hud-sync';
+import { registerPlayerMovementSystem } from './engine/systems/player-movement';
+import { registerChaseSystem } from './combat/chase-system';
+import { registerMeleeSystem } from './combat/melee-system';
+import type { ComponentKey, PlayerComponent, TransformComponent } from './engine/components';
+import type { EnemyComponent } from './combat/enemy';
+import type { MapGrid } from './world/mapgen/simple';
+import type { RunBootstrapResult } from './world/run-setup';
+import { MAP_GRID_RESOURCE_KEY } from './world/run-setup';
 
 const ROOT_ID = 'app';
+const PLAYER_SPEED_TILES_PER_MS = 0.005;
+const PLAYER_ACCELERATION_PER_MS2 = 0;
+
+const TRANSFORM_COMPONENT_KEY = 'component.transform' as ComponentKey<TransformComponent>;
+const PLAYER_COMPONENT_KEY = 'component.player' as ComponentKey<PlayerComponent>;
+const ENEMY_COMPONENT_KEY = 'component.enemy' as ComponentKey<EnemyComponent>;
+
+const SCENE_COLORS = {
+  background: '#020617',
+  floor: '#0f172a',
+  wall: '#1d263b',
+  player: '#38bdf8',
+  enemy: '#f97316',
+  bootText: '#94a3b8',
+};
+
+const MAP_GRID_RESOURCE_KEY_TYPED = MAP_GRID_RESOURCE_KEY as ResourceKey<MapGrid>;
 
 /**
  * Generates the initial seed that drives deterministic game runs.
@@ -89,6 +109,99 @@ function bootstrapGame(rootId: string): GameBootstrapContext {
   };
 }
 
+function configurePlayerMovement(world: World, input: InputManager, map: MapGrid): void {
+  registerPlayerMovementSystem(world, {
+    input,
+    speedScalar: PLAYER_SPEED_TILES_PER_MS,
+    acceleration: PLAYER_ACCELERATION_PER_MS2,
+    map,
+  });
+}
+
+function createRunSynchronizer(
+  world: World,
+  input: InputManager,
+  controller: RunController,
+): () => void {
+  let currentRun: RunBootstrapResult | undefined;
+  return (): void => {
+    const nextRun = controller.getCurrentRun();
+    if (!nextRun || nextRun === currentRun) {
+      return;
+    }
+    configurePlayerMovement(world, input, nextRun.map.grid);
+    currentRun = nextRun;
+  };
+}
+
+function renderGameScene(world: World, renderContext: RenderContext): void {
+  const map = world.getResource<MapGrid>(MAP_GRID_RESOURCE_KEY_TYPED);
+  const { canvas, context } = renderContext;
+  const width = canvas.width;
+  const height = canvas.height;
+
+  context.save();
+  context.setTransform(1, 0, 0, 1, 0, 0);
+  context.fillStyle = SCENE_COLORS.background;
+  context.fillRect(0, 0, width, height);
+
+  if (!map) {
+    context.fillStyle = SCENE_COLORS.bootText;
+    context.font = '8px monospace';
+    context.textBaseline = 'top';
+    context.fillText('Bootstrapping run…', 8, 8);
+    context.restore();
+    return;
+  }
+
+  const tileSize = Math.max(1, Math.floor(Math.min(width / map.width, height / map.height)));
+  const mapWidth = map.width * tileSize;
+  const mapHeight = map.height * tileSize;
+  const offsetX = Math.floor((width - mapWidth) / 2);
+  const offsetY = Math.floor((height - mapHeight) / 2);
+
+  for (let y = 0; y < map.height; y += 1) {
+    for (let x = 0; x < map.width; x += 1) {
+      const tile = map.tiles[y * map.width + x];
+      context.fillStyle = tile.type === 'wall' ? SCENE_COLORS.wall : SCENE_COLORS.floor;
+      context.fillRect(offsetX + x * tileSize, offsetY + y * tileSize, tileSize, tileSize);
+    }
+  }
+
+  const transformStore = world.getComponentStore(TRANSFORM_COMPONENT_KEY);
+  const playerStore = world.getComponentStore(PLAYER_COMPONENT_KEY);
+  const enemyStore = world.getComponentStore(ENEMY_COMPONENT_KEY);
+
+  const drawEntity = (entityId: number, color: string): void => {
+    if (!transformStore) {
+      return;
+    }
+    const transform = transformStore.get(entityId);
+    if (!transform) {
+      return;
+    }
+    const px = offsetX + transform.x * tileSize;
+    const py = offsetY + transform.y * tileSize;
+    const size = Math.max(1, tileSize - 1);
+    context.fillStyle = color;
+    context.fillRect(px, py, size, size);
+  };
+
+  if (playerStore) {
+    for (const [entityId] of playerStore.entries()) {
+      drawEntity(entityId, SCENE_COLORS.player);
+    }
+  }
+
+  if (enemyStore) {
+    for (const [entityId] of enemyStore.entries()) {
+      drawEntity(entityId, SCENE_COLORS.enemy);
+    }
+  }
+
+  context.restore();
+}
+
 /**
  * Entry point that wires together input, world, rendering, and HUD scaffolding.
  *
@@ -111,6 +224,9 @@ function main(): void {
     targetDeltaMs,
     events,
   });
+  registerMeleeSystem(world);
+  registerChaseSystem(world);
+  const syncRunState = createRunSynchronizer(world, input, controller);
 
   let hudState: HudState | undefined;
   if (hudRoot) {
@@ -118,8 +234,9 @@ function main(): void {
   }
 
   const loop = createRenderLoop(renderContext, (_frame) => {
+    syncRunState();
     controller.update(targetDeltaMs);
-    drawPlaceholderScene(renderContext, seed);
+    renderGameScene(world, renderContext);
 
     if (hudState) {
       syncHud(world, hudState, seed);
@@ -127,6 +244,7 @@ function main(): void {
   });
 
   controller.start();
+  syncRunState();
 
   if (hudState) {
     syncHud(world, hudState, seed);
