@@ -6,7 +6,7 @@ import type {
   TransformComponent,
   VelocityComponent,
 } from '../engine/components';
-import { createEnemyComponent, type EnemyComponent } from '../combat/enemy';
+import { createEnemyComponent, type ChaseAIComponent, type EnemyComponent } from '../combat/enemy';
 import { createMulberry32, type RunSeed } from '../shared/random';
 import { generateSimpleMap, type GeneratedMap, type MapGrid } from './mapgen/simple';
 
@@ -15,9 +15,11 @@ const VELOCITY_COMPONENT_KEY = 'component.velocity' as ComponentKey<VelocityComp
 const HEALTH_COMPONENT_KEY = 'component.health' as ComponentKey<HealthComponent>;
 const PLAYER_COMPONENT_KEY = 'component.player' as ComponentKey<PlayerComponent>;
 const ENEMY_COMPONENT_KEY = 'component.enemy' as ComponentKey<EnemyComponent>;
-const MAP_GRID_RESOURCE_KEY = 'resource.map-grid' as ResourceKey<MapGrid>;
+const CHASE_AI_COMPONENT_KEY = 'component.chase-ai' as ComponentKey<ChaseAIComponent>;
+export const MAP_GRID_RESOURCE_KEY = 'resource.map-grid' as ResourceKey<MapGrid>;
 
 const PLAYER_STARTING_HEALTH = 5;
+const ENEMY_DEFAULT_AGGRO_RADIUS = 10;
 
 /**
  * Output produced when a new run is initialised.
@@ -66,8 +68,9 @@ export function bootstrapRun(world: World, seed: RunSeed): RunBootstrapResult {
   ensureComponentStore(TRANSFORM_COMPONENT_KEY);
   ensureComponentStore(VELOCITY_COMPONENT_KEY);
   ensureComponentStore(HEALTH_COMPONENT_KEY);
-  ensureComponentStore(PLAYER_COMPONENT_KEY);
   ensureComponentStore(ENEMY_COMPONENT_KEY);
+  ensureComponentStore(CHASE_AI_COMPONENT_KEY);
+  ensureComponentStore(PLAYER_COMPONENT_KEY);
 
   const rng = createMulberry32(seed.value);
   const map = generateSimpleMap(rng);
@@ -93,6 +96,13 @@ export function bootstrapRun(world: World, seed: RunSeed): RunBootstrapResult {
       max: enemyComponent.maxHp,
     });
     world.addComponent(enemy, ENEMY_COMPONENT_KEY, enemyComponent);
+    world.addComponent(enemy, CHASE_AI_COMPONENT_KEY, {
+      targetEntityId: player.id,
+      aggroRadius: ENEMY_DEFAULT_AGGRO_RADIUS,
+      path: [],
+      currentPathIndex: 0,
+      speedMultiplier: 1,
+    });
     return enemy.id;
   });
 

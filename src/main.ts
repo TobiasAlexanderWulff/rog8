@@ -1,19 +1,43 @@
-import { bootstrapCanvas, createRenderLoop, drawPlaceholderScene } from './render/bootstrap';
+import { bootstrapCanvas, createRenderLoop, type RenderContext } from './render/bootstrap';
 import { InputManager } from './engine/input';
-import { World } from './engine/world';
+import { World, type ResourceKey } from './engine/world';
 import { RunController, type RunControllerEvents } from './engine/run-controller';
 import { createHud, hideGameOver, showGameOver, type HudState } from './ui/hud';
 import { RunSeed } from './shared/random';
 import { syncHud } from './ui/hud-sync';
+import { registerPlayerMovementSystem } from './engine/systems/player-movement';
+import { registerChaseSystem } from './combat/chase-system';
+import { registerMeleeSystem } from './combat/melee-system';
+import type { ComponentKey, PlayerComponent, TransformComponent } from './engine/components';
+import type { EnemyComponent } from './combat/enemy';
+import type { MapGrid } from './world/mapgen/simple';
+import type { RunBootstrapResult } from './world/run-setup';
 
-const ROOT_ID = 'app'; // TODO: Keep in sync with actual DOM root.
+const ROOT_ID = 'app';
+const PLAYER_SPEED_TILES_PER_MS = 0.005;
+const PLAYER_ACCELERATION_PER_MS2 = 0;
+
+const TRANSFORM_COMPONENT_KEY = 'component.transform' as ComponentKey<TransformComponent>;
+const PLAYER_COMPONENT_KEY = 'component.player' as ComponentKey<PlayerComponent>;
+const ENEMY_COMPONENT_KEY = 'component.enemy' as ComponentKey<EnemyComponent>;
+
+const SCENE_COLORS = {
+  background: '#020617',
+  floor: '#0f172a',
+  wall: '#1d263b',
+  player: '#38bdf8',
+  enemy: '#f97316',
+  bootText: '#94a3b8',
+};
+const MAP_GRID_RESOURCE_KEY = 'resource.map-grid' as ResourceKey<MapGrid>;
 
 /**
  * Generates the initial seed that drives deterministic game runs.
  *
  * @remarks
- * Uses the current timestamp masked to 32 bits so the seed remains within the range the
- * deterministic RNG expects.
+ * Pulls a 32-bit sample from the Web Crypto API so each run starts with a unique deterministic seed
+ * while staying within the range expected by the RNG subsystem. Falls back to a timestamp/XOR based
+ * mix when secure randomness is unavailable (e.g. older browsers).
  *
  * @returns Seed wrapper containing a 32-bit unsigned integer.
  * @throws This function never throws; it relies on synchronous bitwise operations.
@@ -23,9 +47,157 @@ const ROOT_ID = 'app'; // TODO: Keep in sync with actual DOM root.
  * console.log(seed.value);
  * ```
  */
-function createInitialSeed(): RunSeed {
-  // TODO: Generate a deterministic seed (random per run, surfaced in HUD).
-  return { value: Date.now() & 0xffffffff };
+export function createInitialSeed(): RunSeed {
+  const getRandomSeed = (): number => {
+    const cryptoApi = globalThis.crypto as Crypto | undefined;
+    if (cryptoApi?.getRandomValues) {
+      const sample = new Uint32Array(1);
+      cryptoApi.getRandomValues(sample);
+      return sample[0] >>> 0;
+    }
+    const fallback = (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
+    return fallback;
+  };
+
+  return { value: getRandomSeed() };
+}
+
+interface GameBootstrapContext {
+  seed: RunSeed;
+  renderContext: RenderContext;
+  world: World;
+  input: InputManager;
+  targetDeltaMs: number;
+  events: RunControllerEvents;
+  hudRoot?: HTMLElement;
+}
+
+/**
+ * Wires together the deterministic seed, ECS world, rendering context, and HUD container.
+ *
+ * @remarks
+ * Provides the fully initialised runtime dependencies so {@link main} can focus on loop orchestration.
+ *
+ * @param rootId - Identifier for the DOM element that hosts the canvas.
+ * @returns Structured runtime references required to start the run controller.
+ */
+function bootstrapGame(rootId: string): GameBootstrapContext {
+  const seed = createInitialSeed();
+  const renderContext = bootstrapCanvas(rootId);
+  const world = new World();
+  const input = new InputManager();
+  const targetDeltaMs = 1000 / 60;
+  const events: RunControllerEvents = {
+    onGameOver(seedValue: RunSeed) {
+      showGameOver(seedValue);
+    },
+    onRestart() {
+      hideGameOver();
+    },
+  };
+
+  return {
+    seed,
+    renderContext,
+    world,
+    input,
+    targetDeltaMs,
+    events,
+    hudRoot: document.getElementById('hud') ?? undefined,
+  };
+}
+
+function configurePlayerMovement(world: World, input: InputManager, map: MapGrid): void {
+  registerPlayerMovementSystem(world, {
+    input,
+    speedScalar: PLAYER_SPEED_TILES_PER_MS,
+    acceleration: PLAYER_ACCELERATION_PER_MS2,
+    map,
+  });
+}
+
+function createRunSynchronizer(
+  world: World,
+  input: InputManager,
+  controller: RunController,
+): () => void {
+  let currentRun: RunBootstrapResult | undefined;
+  return (): void => {
+    const nextRun = controller.getCurrentRun();
+    if (!nextRun || nextRun === currentRun) {
+      return;
+    }
+    configurePlayerMovement(world, input, nextRun.map.grid);
+    currentRun = nextRun;
+  };
+}
+
+function renderGameScene(world: World, renderContext: RenderContext): void {
+  const map = world.getResource<MapGrid>(MAP_GRID_RESOURCE_KEY);
+  const { canvas, context } = renderContext;
+  const width = canvas.width;
+  const height = canvas.height;
+
+  context.save();
+  context.setTransform(1, 0, 0, 1, 0, 0);
+  context.fillStyle = SCENE_COLORS.background;
+  context.fillRect(0, 0, width, height);
+
+  if (!map) {
+    context.fillStyle = SCENE_COLORS.bootText;
+    context.font = '8px monospace';
+    context.textBaseline = 'top';
+    context.fillText('Bootstrapping run…', 8, 8);
+    context.restore();
+    return;
+  }
+
+  const tileSize = Math.max(1, Math.floor(Math.min(width / map.width, height / map.height)));
+  const mapWidth = map.width * tileSize;
+  const mapHeight = map.height * tileSize;
+  const offsetX = Math.floor((width - mapWidth) / 2);
+  const offsetY = Math.floor((height - mapHeight) / 2);
+
+  for (let y = 0; y < map.height; y += 1) {
+    for (let x = 0; x < map.width; x += 1) {
+      const tile = map.tiles[y * map.width + x];
+      context.fillStyle = tile.type === 'wall' ? SCENE_COLORS.wall : SCENE_COLORS.floor;
+      context.fillRect(offsetX + x * tileSize, offsetY + y * tileSize, tileSize, tileSize);
+    }
+  }
+
+  const transformStore = world.getComponentStore(TRANSFORM_COMPONENT_KEY);
+  const playerStore = world.getComponentStore(PLAYER_COMPONENT_KEY);
+  const enemyStore = world.getComponentStore(ENEMY_COMPONENT_KEY);
+
+  const drawEntity = (entityId: number, color: string): void => {
+    if (!transformStore) {
+      return;
+    }
+    const transform = transformStore.get(entityId);
+    if (!transform) {
+      return;
+    }
+    const px = offsetX + transform.x * tileSize;
+    const py = offsetY + transform.y * tileSize;
+    const size = Math.max(1, tileSize - 1);
+    context.fillStyle = color;
+    context.fillRect(px, py, size, size);
+  };
+
+  if (playerStore) {
+    for (const [entityId] of playerStore.entries()) {
+      drawEntity(entityId, SCENE_COLORS.player);
+    }
+  }
+
+  if (enemyStore) {
+    for (const [entityId] of enemyStore.entries()) {
+      drawEntity(entityId, SCENE_COLORS.enemy);
+    }
+  }
+
+  context.restore();
 }
 
 /**
@@ -42,36 +214,27 @@ function createInitialSeed(): RunSeed {
  * ```
  */
 function main(): void {
-  // TODO: Replace scaffolding with real bootstrap once systems are implemented.
-  const seed = createInitialSeed();
-  const renderContext = bootstrapCanvas(ROOT_ID);
-  const world = new World();
-  const input = new InputManager();
-  const targetDeltaMs = 1000 / 60;
-  const lifecycleEvents: RunControllerEvents = {
-    onGameOver(seed: RunSeed) {
-      showGameOver(seed);
-    },
-    onRestart() {
-      hideGameOver();
-    },
-  };
+  const { seed, renderContext, world, input, targetDeltaMs, events, hudRoot } =
+    bootstrapGame(ROOT_ID);
 
   const controller = new RunController(world, input, {
     seed,
     targetDeltaMs,
-    events: lifecycleEvents,
+    events,
   });
+  registerMeleeSystem(world);
+  registerChaseSystem(world);
+  const syncRunState = createRunSynchronizer(world, input, controller);
 
-  const hudRoot = document.getElementById('hud');
   let hudState: HudState | undefined;
   if (hudRoot) {
     hudState = createHud(hudRoot);
   }
 
   const loop = createRenderLoop(renderContext, (_frame) => {
+    syncRunState();
     controller.update(targetDeltaMs);
-    drawPlaceholderScene(renderContext, seed);
+    renderGameScene(world, renderContext);
 
     if (hudState) {
       syncHud(world, hudState, seed);
@@ -79,6 +242,7 @@ function main(): void {
   });
 
   controller.start();
+  syncRunState();
 
   if (hudState) {
     syncHud(world, hudState, seed);
@@ -88,4 +252,6 @@ function main(): void {
 }
 
 // TODO: Wire this to DOMContentLoaded or Vite entry once ready.
-main();
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  main();
+}

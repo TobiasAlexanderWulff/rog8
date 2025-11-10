@@ -32,6 +32,8 @@ Specs live in `src/**/__tests__/` mirroring module paths (`src/world/__tests__/m
 
 If a task widens, split it, capture sub-plans, and reflect scope changes in `docs/ROADMAP.md`. Draft implementation outlines in `docs/plans/` before major features so plan, roadmap, and code stay aligned.
 
+- When you finish a roadmap task, immediately tick it off in `docs/ROADMAP.md` (and link supporting plans/docs) so the tracker stays authoritative.
+
 ## Issue Tracking & Automation
 
 - Use GitHub Issues when it helps you stay organised—reference plan sections in titles (`Phase1: Canvas setup`) to keep the backlog tidy.
