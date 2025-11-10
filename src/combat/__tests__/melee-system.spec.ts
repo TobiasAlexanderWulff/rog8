@@ -1,9 +1,18 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { World, type TickContext, type ResourceKey } from '../../engine/world';
 import { registerMeleeSystem, meleeSystem, type MeleeAttackEvent } from '../melee-system';
-import type { ComponentKey, HealthComponent, VelocityComponent } from '../../engine/components';
+import type {
+  ComponentKey,
+  HealthComponent,
+  PlayerComponent,
+  VelocityComponent,
+} from '../../engine/components';
 import type { EnemyComponent } from '../enemy';
+import {
+  RUN_LIFECYCLE_DISPATCH_KEY,
+  type RunLifecycleDispatcher,
+} from '../../engine/run-controller';
 
 const MELEE_ATTACK_QUEUE_KEY = 'system.melee.attack-queue' as ResourceKey<MeleeAttackEvent[]>;
 const MELEE_ATTACK_DISPATCH_KEY = 'system.melee.dispatch-attack' as ResourceKey<
@@ -11,6 +20,7 @@ const MELEE_ATTACK_DISPATCH_KEY = 'system.melee.dispatch-attack' as ResourceKey<
 >;
 const HEALTH_COMPONENT_KEY = 'component.health' as ComponentKey<HealthComponent>;
 const ENEMY_COMPONENT_KEY = 'component.enemy' as ComponentKey<EnemyComponent>;
+const PLAYER_COMPONENT_KEY = 'component.player' as ComponentKey<PlayerComponent>;
 const VELOCITY_COMPONENT_KEY = 'component.velocity' as ComponentKey<VelocityComponent>;
 
 /**
@@ -211,5 +221,43 @@ describe('melee-system', () => {
     const targetHealth = world.getComponent(target, HEALTH_COMPONENT_KEY);
     expect(targetHealth?.current).toBe(3);
     expect(queue).toHaveLength(0);
+  });
+
+  it('triggers the run controller when the player health reaches zero', () => {
+    world.registerComponentStore(PLAYER_COMPONENT_KEY);
+    registerMeleeSystem(world);
+
+    const player = world.createEntity();
+    world.addComponent(player, PLAYER_COMPONENT_KEY, { name: 'Player' });
+    world.addComponent(player, HEALTH_COMPONENT_KEY, { current: 2, max: 2 });
+
+    const attacker = world.createEntity();
+    world.addComponent(attacker, ENEMY_COMPONENT_KEY, {
+      archetype: 'grunt',
+      maxHp: 1,
+      speed: 1,
+      damage: 2,
+    });
+
+    const queue = world.getResource(MELEE_ATTACK_QUEUE_KEY);
+    if (!queue) {
+      throw new Error('Expected melee attack queue to be registered.');
+    }
+
+    const triggerGameOver = vi.fn();
+    const dispatcher: RunLifecycleDispatcher = {
+      triggerGameOver,
+    };
+    world.registerResource(RUN_LIFECYCLE_DISPATCH_KEY, dispatcher);
+
+    queue.push({
+      attackerId: attacker.id,
+      targetId: player.id,
+      damage: 5,
+    });
+
+    meleeSystem(world, createTickContext());
+
+    expect(triggerGameOver).toHaveBeenCalledTimes(1);
   });
 });

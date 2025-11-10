@@ -1,7 +1,13 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { System, World, TickContext, ResourceKey } from '../engine/world';
-import type { ComponentKey, HealthComponent, VelocityComponent } from '../engine/components';
+import type {
+  ComponentKey,
+  HealthComponent,
+  PlayerComponent,
+  VelocityComponent,
+} from '../engine/components';
 import type { EnemyComponent } from './enemy';
+import { RUN_LIFECYCLE_DISPATCH_KEY, type RunLifecycleDispatcher } from '../engine/run-controller';
 
 /**
  * Snapshot of the impulse applied to a target after a melee hit.
@@ -48,6 +54,7 @@ const MELEE_ATTACK_DISPATCH_KEY = 'system.melee.dispatch-attack' as ResourceKey<
 >;
 const HEALTH_COMPONENT_KEY = 'component.health' as ComponentKey<HealthComponent>;
 const ENEMY_COMPONENT_KEY = 'component.enemy' as ComponentKey<EnemyComponent>;
+const PLAYER_COMPONENT_KEY = 'component.player' as ComponentKey<PlayerComponent>;
 const VELOCITY_COMPONENT_KEY = 'component.velocity' as ComponentKey<VelocityComponent>;
 const DEFAULT_MELEE_DAMAGE = 1;
 
@@ -146,6 +153,10 @@ export const meleeSystem: System = (world, context) => {
 
   const enemyStore = world.getComponentStore(ENEMY_COMPONENT_KEY);
   const velocityStore = world.getComponentStore(VELOCITY_COMPONENT_KEY);
+  const playerStore = world.getComponentStore(PLAYER_COMPONENT_KEY);
+  const lifecycleDispatch: RunLifecycleDispatcher | undefined = world.getResource(
+    RUN_LIFECYCLE_DISPATCH_KEY,
+  );
 
   for (let i = 0; i < queue.length; i += 1) {
     const attack = queue[i];
@@ -175,8 +186,15 @@ export const meleeSystem: System = (world, context) => {
       }
     }
 
-    const nextHealth = targetHealth.current - damage;
-    targetHealth.current = nextHealth > 0 ? nextHealth : 0;
+    const previousHealth = targetHealth.current;
+    const nextHealth = previousHealth - damage;
+    const clampedHealth = nextHealth > 0 ? nextHealth : 0;
+    targetHealth.current = clampedHealth;
+
+    const isPlayerTarget = playerStore?.has(attack.targetId) ?? false;
+    if (isPlayerTarget && previousHealth > 0 && clampedHealth === 0) {
+      lifecycleDispatch?.triggerGameOver();
+    }
 
     const knockback = attack.knockback;
     if (!knockback || !velocityStore) {

@@ -56,6 +56,33 @@ export interface RunControllerEvents {
 }
 
 /**
+ * Dispatcher resource that exposes run lifecycle transitions to ECS systems.
+ *
+ * @remarks
+ * Systems retrieve the dispatcher from the world and invoke `triggerGameOver` when the player dies
+ * so the controller can halt the simulation and notify presentation layers.
+ *
+ * @example
+ * ```ts
+ * const dispatcher = world.getResource(RUN_LIFECYCLE_DISPATCH_KEY);
+ * dispatcher?.triggerGameOver();
+ * ```
+ */
+export interface RunLifecycleDispatcher {
+  triggerGameOver(): void;
+}
+
+/**
+ * Resource key used to register the {@link RunLifecycleDispatcher} within the world.
+ *
+ * @remarks
+ * The controller re-registers the dispatcher after every restart to keep the callbacks bound to the
+ * latest instance.
+ */
+export const RUN_LIFECYCLE_DISPATCH_KEY =
+  'engine.run.lifecycle-dispatch' as ResourceKey<RunLifecycleDispatcher>;
+
+/**
  * Snapshot describing the player entity for HUD and gameplay orchestration.
  *
  * @remarks
@@ -324,6 +351,14 @@ export class RunController {
     if (!this.world.hasResource(RunController.INPUT_RESOURCE_KEY)) {
       this.world.registerResource(RunController.INPUT_RESOURCE_KEY, this.input);
     }
+
+    const dispatcher: RunLifecycleDispatcher = {
+      triggerGameOver: () => {
+        this.triggerGameOver();
+      },
+    };
+    this.world.removeResource(RUN_LIFECYCLE_DISPATCH_KEY);
+    this.world.registerResource(RUN_LIFECYCLE_DISPATCH_KEY, dispatcher);
   }
 
   /**
