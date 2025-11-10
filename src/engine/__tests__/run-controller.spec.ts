@@ -16,6 +16,13 @@ import type {
 } from '../components';
 import { createEnemyComponent, type EnemyComponent } from '../../combat/enemy';
 import type { MapGrid } from '../../world/mapgen/simple';
+import { registerMeleeSystem, type MeleeAttackEvent } from '../../combat/melee-system';
+
+const enemyKey = 'component.enemy' as ComponentKey<EnemyComponent>;
+const MELEE_ATTACK_QUEUE_KEY = 'system.melee.attack-queue' as ResourceKey<MeleeAttackEvent[]>;
+const MELEE_ATTACK_DISPATCH_KEY = 'system.melee.dispatch-attack' as ResourceKey<
+  (event: MeleeAttackEvent) => void
+>;
 
 function simulateKeyPress(manager: InputManager, key: KeyBinding, frame: number): void {
   const internals = manager as unknown as {
@@ -94,8 +101,6 @@ describe('RunController', () => {
     const velocityKey = 'component.velocity' as ComponentKey<VelocityComponent>;
     const healthKey = 'component.health' as ComponentKey<HealthComponent>;
     const playerKey = 'component.player' as ComponentKey<PlayerComponent>;
-    const enemyKey = 'component.enemy' as ComponentKey<EnemyComponent>;
-
     const run = controller.getCurrentRun();
     expect(run).toBeDefined();
     expect(world.getResource(inputResourceKey)).toBe(input);
@@ -143,7 +148,6 @@ describe('RunController', () => {
     const velocityKey = 'component.velocity' as ComponentKey<VelocityComponent>;
     const healthKey = 'component.health' as ComponentKey<HealthComponent>;
     const playerKey = 'component.player' as ComponentKey<PlayerComponent>;
-    const enemyKey = 'component.enemy' as ComponentKey<EnemyComponent>;
 
     const transformSnapshot = world.getComponentStore(transformKey)?.entries() ?? [];
     const velocitySnapshot = world.getComponentStore(velocityKey)?.entries() ?? [];
@@ -280,6 +284,29 @@ describe('RunController', () => {
     controller.update(targetDeltaMs);
 
     expect(rngSamples).toEqual(firstRunSamples);
+  });
+
+  it('rehydrates melee combat resources after restart when the system is installed', () => {
+    const targetDeltaMs = 16;
+    const seedValue = 777;
+    const world = new World();
+    const input = new InputManager();
+    const controller = new RunController(world, input, {
+      targetDeltaMs,
+      seed: { value: seedValue },
+    });
+
+    registerMeleeSystem(world);
+
+    expect(world.hasResource(MELEE_ATTACK_QUEUE_KEY)).toBe(true);
+    expect(world.hasResource(MELEE_ATTACK_DISPATCH_KEY)).toBe(true);
+
+    controller.start();
+    controller.triggerGameOver();
+    controller.restart();
+
+    expect(world.hasResource(MELEE_ATTACK_QUEUE_KEY)).toBe(true);
+    expect(world.hasResource(MELEE_ATTACK_DISPATCH_KEY)).toBe(true);
   });
 
   it('invokes lifecycle event hooks on game over and restart', () => {

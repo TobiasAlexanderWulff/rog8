@@ -7,7 +7,7 @@ import type {
   VelocityComponent,
 } from '../engine/components';
 import type { EnemyComponent } from './enemy';
-import { RUN_LIFECYCLE_DISPATCH_KEY, type RunLifecycleDispatcher } from '../engine/run-controller';
+import { RUN_LIFECYCLE_DISPATCH_KEY, type RunLifecycleDispatcher } from '../engine/run-lifecycle';
 
 /**
  * Snapshot of the impulse applied to a target after a melee hit.
@@ -72,20 +72,30 @@ const DEFAULT_MELEE_DAMAGE = 1;
  * registerMeleeSystem(world);
  * ```
  */
-export const registerMeleeSystem = (world: World): void => {
+const meleeEnabledWorlds = new WeakSet<World>();
+
+const ensureAttackQueue = (world: World): MeleeAttackEvent[] => {
   const existingQueue = world.getResource(MELEE_ATTACK_QUEUE_KEY);
   if (existingQueue && !Array.isArray(existingQueue)) {
     throw new Error('Melee attack queue resource must be an array.');
   }
 
-  const attackQueue: MeleeAttackEvent[] = existingQueue ?? [];
   if (!existingQueue) {
-    world.registerResource(MELEE_ATTACK_QUEUE_KEY, attackQueue);
-  } else if (attackQueue.length !== 0) {
-    attackQueue.length = 0;
+    const queue: MeleeAttackEvent[] = [];
+    world.registerResource(MELEE_ATTACK_QUEUE_KEY, queue);
+    return queue;
   }
 
-  const dispatchAttack = (event: MeleeAttackEvent): void => {
+  if (existingQueue.length !== 0) {
+    existingQueue.length = 0;
+  }
+
+  return existingQueue;
+};
+
+const createAttackDispatcher =
+  (attackQueue: MeleeAttackEvent[]) =>
+  (event: MeleeAttackEvent): void => {
     const attackerId = event.attackerId;
     const targetId = event.targetId;
     if (!Number.isFinite(attackerId) || !Number.isFinite(targetId)) {
@@ -117,9 +127,56 @@ export const registerMeleeSystem = (world: World): void => {
     });
   };
 
-  world.removeResource(MELEE_ATTACK_DISPATCH_KEY); // Replace any stale dispatcher from previous runs.
+const installMeleeResources = (world: World): void => {
+  const attackQueue = ensureAttackQueue(world);
+  const dispatchAttack = createAttackDispatcher(attackQueue);
+  world.removeResource(MELEE_ATTACK_DISPATCH_KEY);
   world.registerResource(MELEE_ATTACK_DISPATCH_KEY, dispatchAttack);
+};
+
+/**
+ * Installs the melee combat system on the provided world instance.
+ *
+ * @remarks
+ * Ensures the attack queue and dispatcher resources exist before the system is scheduled.
+ *
+ * @param world - ECS world that hosts systems and components.
+ * @throws Error when an existing melee attack queue resource has an unexpected shape.
+ * @example
+ * ```ts
+ * registerMeleeSystem(world);
+ * ```
+ */
+export const registerMeleeSystem = (world: World): void => {
+  installMeleeResources(world);
+
+  if (meleeEnabledWorlds.has(world)) {
+    return;
+  }
+
   world.addSystem(meleeSystem);
+  meleeEnabledWorlds.add(world);
+};
+
+/**
+ * Restores melee combat resources after the world has been reset by the run controller.
+ *
+ * @remarks
+ * No-ops when the melee system has not yet been registered on the world to avoid registering
+ * unused resources.
+ *
+ * @param world - ECS world currently owned by the controller.
+ * @example
+ * ```ts
+ * rehydrateMeleeResources(world);
+ * ```
+ */
+export const rehydrateMeleeResources = (world: World): void => {
+  if (!meleeEnabledWorlds.has(world)) {
+    return;
+  }
+
+  installMeleeResources(world);
 };
 
 /**

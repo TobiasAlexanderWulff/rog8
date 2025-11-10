@@ -4,6 +4,8 @@ import { World, TickContext, type ResourceKey } from './world';
 import type { ComponentKey, HealthComponent } from './components';
 import { bootstrapRun, type RunBootstrapResult } from '../world/run-setup';
 import { InputManager } from './input';
+import { RUN_LIFECYCLE_DISPATCH_KEY, type RunLifecycleDispatcher } from './run-lifecycle';
+import { rehydrateMeleeResources } from '../combat/melee-system';
 
 /**
  * Labels for the lifecycle states a run can occupy.
@@ -54,33 +56,6 @@ export interface RunControllerEvents {
   onGameOver?(seed: RunSeed): void;
   onRestart?(): void;
 }
-
-/**
- * Dispatcher resource that exposes run lifecycle transitions to ECS systems.
- *
- * @remarks
- * Systems retrieve the dispatcher from the world and invoke `triggerGameOver` when the player dies
- * so the controller can halt the simulation and notify presentation layers.
- *
- * @example
- * ```ts
- * const dispatcher = world.getResource(RUN_LIFECYCLE_DISPATCH_KEY);
- * dispatcher?.triggerGameOver();
- * ```
- */
-export interface RunLifecycleDispatcher {
-  triggerGameOver(): void;
-}
-
-/**
- * Resource key used to register the {@link RunLifecycleDispatcher} within the world.
- *
- * @remarks
- * The controller re-registers the dispatcher after every restart to keep the callbacks bound to the
- * latest instance.
- */
-export const RUN_LIFECYCLE_DISPATCH_KEY =
-  'engine.run.lifecycle-dispatch' as ResourceKey<RunLifecycleDispatcher>;
 
 /**
  * Snapshot describing the player entity for HUD and gameplay orchestration.
@@ -359,6 +334,7 @@ export class RunController {
     };
     this.world.removeResource(RUN_LIFECYCLE_DISPATCH_KEY);
     this.world.registerResource(RUN_LIFECYCLE_DISPATCH_KEY, dispatcher);
+    rehydrateMeleeResources(this.world);
   }
 
   /**

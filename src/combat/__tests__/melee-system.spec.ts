@@ -1,7 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { World, type TickContext, type ResourceKey } from '../../engine/world';
-import { registerMeleeSystem, meleeSystem, type MeleeAttackEvent } from '../melee-system';
+import {
+  registerMeleeSystem,
+  meleeSystem,
+  rehydrateMeleeResources,
+  type MeleeAttackEvent,
+} from '../melee-system';
 import type {
   ComponentKey,
   HealthComponent,
@@ -12,7 +17,7 @@ import type { EnemyComponent } from '../enemy';
 import {
   RUN_LIFECYCLE_DISPATCH_KEY,
   type RunLifecycleDispatcher,
-} from '../../engine/run-controller';
+} from '../../engine/run-lifecycle';
 
 const MELEE_ATTACK_QUEUE_KEY = 'system.melee.attack-queue' as ResourceKey<MeleeAttackEvent[]>;
 const MELEE_ATTACK_DISPATCH_KEY = 'system.melee.dispatch-attack' as ResourceKey<
@@ -259,5 +264,29 @@ describe('melee-system', () => {
     meleeSystem(world, createTickContext());
 
     expect(triggerGameOver).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not rehydrate resources when the melee system has not been registered', () => {
+    rehydrateMeleeResources(world);
+
+    expect(world.hasResource(MELEE_ATTACK_QUEUE_KEY)).toBe(false);
+    expect(world.hasResource(MELEE_ATTACK_DISPATCH_KEY)).toBe(false);
+  });
+
+  it('rehydrates resources after the world reset when the system was registered previously', () => {
+    registerMeleeSystem(world);
+
+    expect(world.hasResource(MELEE_ATTACK_QUEUE_KEY)).toBe(true);
+    expect(world.hasResource(MELEE_ATTACK_DISPATCH_KEY)).toBe(true);
+
+    world.reset();
+
+    expect(world.hasResource(MELEE_ATTACK_QUEUE_KEY)).toBe(false);
+    expect(world.hasResource(MELEE_ATTACK_DISPATCH_KEY)).toBe(false);
+
+    rehydrateMeleeResources(world);
+
+    expect(world.hasResource(MELEE_ATTACK_QUEUE_KEY)).toBe(true);
+    expect(world.hasResource(MELEE_ATTACK_DISPATCH_KEY)).toBe(true);
   });
 });
