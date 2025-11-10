@@ -10,6 +10,23 @@ export type KeyBinding =
   | 'Space'
   | 'KeyR';
 
+/**
+ * Snapshot of input bindings for a single frame.
+ *
+ * @remarks
+ * The sets mirror the keys pressed, held, or released during the current frame number supplied to
+ * {@link InputManager.beginFrame}.
+ *
+ * @example
+ * ```ts
+ * const state: FrameInputState = {
+ *   pressed: new Set(),
+ *   held: new Set(),
+ *   released: new Set(),
+ *   frame: 0,
+ * };
+ * ```
+ */
 export interface FrameInputState {
   pressed: Set<KeyBinding>;
   held: Set<KeyBinding>;
@@ -34,6 +51,19 @@ const TRACKED_KEY_LOOKUP = new Set<string>(TRACKED_KEYS);
 
 /**
  * Narrows arbitrary keyboard codes to the subset tracked by the input manager.
+ *
+ * @remarks
+ * Helps TypeScript narrow `KeyboardEvent.code` values to the known `KeyBinding` union.
+ *
+ * @param code - Raw keyboard code to validate.
+ * @returns `true` when the code is tracked.
+ * @throws This function never throws; it performs a lookup against a predefined set.
+ * @example
+ * ```ts
+ * if (isTrackedKey(event.code)) {
+ *   // safe to treat as a KeyBinding
+ * }
+ * ```
  */
 function isTrackedKey(code: string): code is KeyBinding {
   return TRACKED_KEY_LOOKUP.has(code);
@@ -41,6 +71,19 @@ function isTrackedKey(code: string): code is KeyBinding {
 
 /**
  * Tracks keyboard input state and surfaces per-frame pressed/held/released queries.
+ *
+ * @remarks
+ * Automatically attaches to the global window when running in a browser context and can be used in
+ * headless tests by manually providing a jsdom window.
+ *
+ * @example
+ * ```ts
+ * const manager = new InputManager();
+ * manager.beginFrame(1);
+ * if (manager.isPressed('Space')) {
+ *   // act on jump input
+ * }
+ * ```
  */
 export class InputManager {
   private bindings: Set<KeyBinding> = new Set();
@@ -71,8 +114,15 @@ export class InputManager {
   /**
    * Attaches keyboard listeners to track pressed, held, and released keys.
    *
-   * Args:
-   *   target: Window instance that dispatches keyboard events.
+   * @remarks
+   * Repeated calls with the same window are ignored to prevent duplicate listener registration.
+   *
+   * @param target - Window instance that dispatches keyboard events.
+   * @throws This method never throws; unsupported targets are ignored.
+   * @example
+   * ```ts
+   * manager.attach(window);
+   * ```
    */
   attach(target: Window): void {
     // Bail out if listeners for this window instance were already registered.
@@ -141,8 +191,15 @@ export class InputManager {
   /**
    * Removes registered key listeners from the given window to prevent leaks.
    *
-   * Args:
-   *   target: Window instance to detach the listeners from.
+   * @remarks
+   * Also clears cached state so subsequent frames start with a clean slate.
+   *
+   * @param target - Window instance to detach the listeners from.
+   * @throws This method never throws; unknown windows are ignored.
+   * @example
+   * ```ts
+   * manager.detach(window);
+   * ```
    */
   detach(target: Window): void {
     const listeners = this.listeners.get(target);
@@ -185,8 +242,15 @@ export class InputManager {
   /**
    * Resets transient input state for the upcoming frame while keeping the held bindings alive.
    *
-   * Args:
-   *   frame: Frame index being processed.
+   * @remarks
+   * Call once per frame to rotate the pressed and released sets while maintaining held bindings.
+   *
+   * @param frame - Frame index being processed.
+   * @throws This method never throws; it only mutates internal caches.
+   * @example
+   * ```ts
+   * manager.beginFrame(frameNumber);
+   * ```
    */
   beginFrame(frame: number): void {
     if (this.frameState.pressed.size !== 0) {
@@ -211,11 +275,18 @@ export class InputManager {
   /**
    * Determines whether a key was newly pressed during the active frame.
    *
-   * Args:
-   *   key: Binding to check for a fresh press.
+   * @remarks
+   * Returns `true` exactly once when a binding transitions from up to down.
    *
-   * Returns:
-   *   True only if this frame registered a fresh key press.
+   * @param key - Binding to check for a fresh press.
+   * @returns `true` only if this frame registered a fresh key press.
+   * @throws This method never throws; it queries internal maps.
+   * @example
+   * ```ts
+   * if (manager.isPressed('Space')) {
+   *   // fire jump action
+   * }
+   * ```
    */
   isPressed(key: KeyBinding): boolean {
     const pressedFrame = this.pressedFrames.get(key);
@@ -235,11 +306,18 @@ export class InputManager {
   /**
    * Determines whether a key should be treated as held on the current frame.
    *
-   * Args:
-   *   key: Binding to evaluate for held state.
+   * @remarks
+   * Held bindings persist across frames until the key is released.
    *
-   * Returns:
-   *   True when the key remains down beyond its initial press frame.
+   * @param key - Binding to evaluate for held state.
+   * @returns `true` when the key remains down beyond its initial press frame.
+   * @throws This method never throws; it checks cached sets and frame metadata.
+   * @example
+   * ```ts
+   * if (manager.isHeld('ArrowUp')) {
+   *   // continue moving north
+   * }
+   * ```
    */
   isHeld(key: KeyBinding): boolean {
     if (!this.frameState.held.has(key)) {
@@ -264,11 +342,18 @@ export class InputManager {
   /**
    * Determines whether the given key was released during the current frame.
    *
-   * Args:
-   *   key: Binding to query for a release event.
+   * @remarks
+   * Reports releases only for the frame on which they occur and clears stale tracking afterwards.
    *
-   * Returns:
-   *   True if the key transitioned to released this frame; otherwise, false.
+   * @param key - Binding to query for a release event.
+   * @returns `true` if the key transitioned to released this frame; otherwise, `false`.
+   * @throws This method never throws; it manipulates cached release frames.
+   * @example
+   * ```ts
+   * if (manager.isReleased('KeyR')) {
+   *   // restart run
+   * }
+   * ```
    */
   isReleased(key: KeyBinding): boolean {
     const releasedFrame = this.releasedFrames.get(key);

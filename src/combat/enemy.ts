@@ -7,6 +7,14 @@ const ENEMY_COMPONENT_KEY = 'component.enemy' as ComponentKey<EnemyComponent>;
 
 /**
  * Supported enemy archetypes that drive spawn behaviour and stats.
+ *
+ * @remarks
+ * Extend this union and the accompanying `ARCHETYPE_STATS` map when introducing new enemy types.
+ *
+ * @example
+ * ```ts
+ * const archetype: EnemyArchetype = 'grunt';
+ * ```
  */
 export type EnemyArchetype = 'grunt' | 'brute' | 'placeholder';
 
@@ -36,6 +44,15 @@ const ARCHETYPE_STATS: Record<EnemyArchetype, EnemyCombatStats> = {
 
 /**
  * Component attached to enemy entities describing their archetype.
+ *
+ * @remarks
+ * The component mixes in combat stats so gameplay systems can read speed and damage without
+ * consulting the archetype table again.
+ *
+ * @example
+ * ```ts
+ * const enemy: EnemyComponent = { archetype: 'grunt', maxHp: 1, speed: 1.5, damage: 1 };
+ * ```
  */
 export interface EnemyComponent extends EnemyCombatStats {
   archetype: EnemyArchetype;
@@ -44,8 +61,18 @@ export interface EnemyComponent extends EnemyCombatStats {
 /**
  * Creates an enemy combat component instance for the requested archetype.
  *
- * @param archetype Enemy template that controls base stats.
- * @returns {EnemyComponent} Fresh component instance for the archetype.
+ * @remarks
+ * Copies the combat stat template so runtime mutations (e.g., buffs) do not affect the shared
+ * archetype definition.
+ *
+ * @param archetype - Enemy template that controls base stats.
+ * @returns Fresh component instance for the archetype.
+ * @throws This function never throws; it reads data from a static lookup table.
+ * @example
+ * ```ts
+ * const grunt = createEnemyComponent('grunt');
+ * console.log(grunt.maxHp);
+ * ```
  */
 export function createEnemyComponent(archetype: EnemyArchetype): EnemyComponent {
   const stats = ARCHETYPE_STATS[archetype];
@@ -59,6 +86,21 @@ export function createEnemyComponent(archetype: EnemyArchetype): EnemyComponent 
 
 /**
  * Component used by chase AI systems to track pursuit metadata.
+ *
+ * @remarks
+ * Stores both the path and current target so behaviour systems can react without recomputing path
+ * state every frame.
+ *
+ * @example
+ * ```ts
+ * const chase: ChaseAIComponent = {
+ *   targetEntityId: null,
+ *   aggroRadius: 6,
+ *   path: [],
+ *   currentPathIndex: 0,
+ *   speedMultiplier: 1,
+ * };
+ * ```
  */
 export interface ChaseAIComponent {
   targetEntityId: number | null;
@@ -71,10 +113,19 @@ export interface ChaseAIComponent {
 /**
  * Spawns a new enemy of the given archetype into the world.
  *
- * @param world Active world that should host the enemy entity.
- * @param archetype Enemy type to instantiate.
- * @param position Spawn position in tile coordinates.
- * @returns {number} Identifier of the newly created enemy entity.
+ * @remarks
+ * Component stores are lazily registered so callers do not have to seed them separately before
+ * spawning enemies.
+ *
+ * @param world - Active world that should host the enemy entity.
+ * @param archetype - Enemy type to instantiate.
+ * @param position - Spawn position in tile coordinates.
+ * @returns Identifier of the newly created enemy entity.
+ * @throws This function never throws; component store registration is guarded.
+ * @example
+ * ```ts
+ * const enemyId = spawnEnemy(world, 'grunt', { x: 10, y: 12 });
+ * ```
  */
 export function spawnEnemy(
   world: World,

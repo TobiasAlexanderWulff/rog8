@@ -1,3 +1,3 @@
 # Review Notes
 
-- [x] Fix unknown enemy archetype in test (`src/combat/__tests__/melee-system.spec.ts:174`) — add `'brute'` to `EnemyArchetype` or use an existing archetype to satisfy the type check.
+- [x] Ensure melee resources are re-registered after `RunController.restart()` so post-restart runs still process damage (`src/engine/run-controller.ts:271`, `src/combat/melee-system.ts:75`).

@@ -1,10 +1,29 @@
 /**
  * Numeric seed used to initialize deterministic random number generators.
+ *
+ * @remarks
+ * Seeds are treated as unsigned 32-bit values by RNG implementations to guarantee deterministic
+ * wrapping behaviour.
+ *
+ * @example
+ * ```ts
+ * const seed: Seed = 0xdeadbeef;
+ * ```
  */
 export type Seed = number;
 
 /**
  * Interface for deterministic RNG instances used across the simulation runtime.
+ *
+ * @remarks
+ * All RNGs expose helpers for raw 32-bit samples, floating point [0, 1) values, and inclusive
+ * integer ranges.
+ *
+ * @example
+ * ```ts
+ * const rng = createMulberry32(123);
+ * const roll = rng.nextInt(1, 6);
+ * ```
  */
 export interface RNG {
   next(): number;
@@ -14,6 +33,15 @@ export interface RNG {
 
 /**
  * Wrapper for storing the campaign or run seed.
+ *
+ * @remarks
+ * Keeps the primitive seed value wrapped so it can be extended with metadata later without
+ * changing call sites.
+ *
+ * @example
+ * ```ts
+ * const seed: RunSeed = { value: 7 };
+ * ```
  */
 export interface RunSeed {
   value: Seed;
@@ -24,7 +52,9 @@ const RNG_META = Symbol('rngMeta');
 /**
  * Metadata attached to RNG instances so implementations can expose cloning hooks.
  *
- * @property type Unique identifier of the RNG algorithm.
+ * @remarks
+ * The metadata captures the RNG algorithm identifier so clone operations can dispatch to the
+ * appropriate implementation.
  */
 type RngMeta = {
   type: string;
@@ -33,8 +63,9 @@ type RngMeta = {
 /**
  * Mulberry32-specific metadata exposed via {@link RNG_META}.
  *
- * @property type Literal discriminator for Mulberry32 RNGs.
- * @property getState Function that retrieves the current internal state.
+ * @remarks
+ * Extends {@link RngMeta} with a state accessor so clones can resume from the same point in the
+ * sequence.
  */
 type Mulberry32Meta = RngMeta & {
   type: 'mulberry32';
@@ -43,6 +74,9 @@ type Mulberry32Meta = RngMeta & {
 
 /**
  * RNG instances tagged with optional metadata needed for safe cloning.
+ *
+ * @remarks
+ * The metadata lives on a symbol to keep standard RNG method signatures uncluttered.
  */
 type TaggedRng = RNG & {
   [RNG_META]?: RngMeta;
@@ -51,8 +85,16 @@ type TaggedRng = RNG & {
 /**
  * Type guard that narrows metadata to the Mulberry32 implementation.
  *
- * @param meta Metadata attached to an RNG instance.
- * @returns True when the metadata references a Mulberry32 RNG.
+ * @remarks
+ * Ensures clone routines can access Mulberry32-specific helpers safely.
+ *
+ * @param meta - Metadata attached to an RNG instance.
+ * @returns `true` when the metadata references a Mulberry32 RNG.
+ * @throws This function never throws; it relies on a discriminator check.
+ * @example
+ * ```ts
+ * const isMulberry = isMulberry32Meta({ type: 'mulberry32', getState: () => 0 });
+ * ```
  */
 function isMulberry32Meta(meta: RngMeta): meta is Mulberry32Meta {
   return meta.type === 'mulberry32';
@@ -61,8 +103,18 @@ function isMulberry32Meta(meta: RngMeta): meta is Mulberry32Meta {
 /**
  * Builds a Mulberry32 RNG that exposes deterministic iteration over 32-bit integers.
  *
- * @param seed Unsigned 32-bit seed that initializes the Mulberry32 state.
+ * @remarks
+ * Mulberry32 offers fast, non-cryptographic randomness suitable for gameplay systems that require
+ * reproducibility.
+ *
+ * @param seed - Unsigned 32-bit seed that initializes the Mulberry32 state.
  * @returns RNG instance bound to the provided seed.
+ * @throws This function never throws; the state initialisation is deterministic for any input.
+ * @example
+ * ```ts
+ * const rng = createMulberry32(42);
+ * console.log(rng.nextFloat());
+ * ```
  */
 export function createMulberry32(seed: Seed): RNG {
   // Track the unsigned 32-bit state in a closure so we can expose cloning hooks.
@@ -109,9 +161,17 @@ export function createMulberry32(seed: Seed): RNG {
 /**
  * Executes a consumer with a temporary Mulberry32 RNG seeded deterministically.
  *
- * @param seed Deterministic seed used to initialize the RNG.
- * @param consumer Callback that receives a seeded RNG instance.
+ * @remarks
+ * Guarantees the consumer observes a fresh RNG instance whose state does not leak across calls.
+ *
+ * @param seed - Deterministic seed used to initialize the RNG.
+ * @param consumer - Callback that receives a seeded RNG instance.
  * @returns Result returned by the consumer callback.
+ * @throws This function never throws; it forwards any consumer exception transparently.
+ * @example
+ * ```ts
+ * const result = withSeed(99, (rng) => rng.nextInt(1, 10));
+ * ```
  */
 export function withSeed<T>(seed: Seed, consumer: (rng: RNG) => T): T {
   return consumer(createMulberry32(seed));
@@ -120,9 +180,18 @@ export function withSeed<T>(seed: Seed, consumer: (rng: RNG) => T): T {
 /**
  * Creates a new RNG that mirrors the state of the provided instance.
  *
- * @param rng RNG instance to clone. Must be created via {@link createMulberry32}.
+ * @remarks
+ * Only RNGs produced by {@link createMulberry32} expose the required metadata for safe cloning.
+ *
+ * @param rng - RNG instance to clone. Must be created via {@link createMulberry32}.
  * @returns New RNG that continues from the same deterministic state.
  * @throws Error when the RNG does not expose clone metadata.
+ * @example
+ * ```ts
+ * const rng = createMulberry32(123);
+ * const clone = cloneRng(rng);
+ * console.log(rng.next(), clone.next());
+ * ```
  */
 export function cloneRng(rng: RNG): RNG {
   const meta = (rng as TaggedRng)[RNG_META];

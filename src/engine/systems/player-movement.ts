@@ -17,10 +17,19 @@ import { checkCollision } from '../collision';
 /**
  * Runtime dependencies for the player movement system.
  *
- * @property {InputManager} input Input manager used to query the current keyboard state.
- * @property {number} speedScalar Maximum velocity magnitude applied to the player.
- * @property {number} acceleration Rate at which velocity approaches the desired magnitude.
- * @property {MapGrid} map Tile grid used to resolve collision against blocking tiles.
+ * @remarks
+ * Encapsulates input state, tunable movement parameters, and the collision map the player
+ * navigates.
+ *
+ * @example
+ * ```ts
+ * const options: PlayerMovementOptions = {
+ *   input,
+ *   speedScalar: 5,
+ *   acceleration: 0.02,
+ *   map,
+ * };
+ * ```
  */
 export interface PlayerMovementOptions {
   input: InputManager;
@@ -39,9 +48,17 @@ const PLAYER_COMPONENT_KEY = 'component.player' as ComponentKey<PlayerComponent>
 /**
  * Installs the player movement system with the provided configuration.
  *
- * @param world ECS world that manages entities and components.
- * @param options Handles required to read input and adjust velocities.
- * @returns void
+ * @remarks
+ * Stores the supplied options as a world resource and registers the system so it executes each
+ * frame.
+ *
+ * @param world - ECS world that manages entities and components.
+ * @param options - Handles required to read input and adjust velocities.
+ * @throws This function never throws; it replaces any existing options resource.
+ * @example
+ * ```ts
+ * registerPlayerMovementSystem(world, options);
+ * ```
  */
 export const registerPlayerMovementSystem = (
   world: World,
@@ -56,9 +73,19 @@ export const registerPlayerMovementSystem = (
 /**
  * Applies player-facing movement by sampling the current input state.
  *
- * @param world ECS world to mutate.
- * @param context Frame metadata including RNG and delta time.
- * @returns void
+ * @remarks
+ * Adjusts velocity vectors toward desired input directions and resolves collisions against the map
+ * grid.
+ *
+ * @param world - ECS world to mutate.
+ * @param context - Frame metadata including RNG and delta time.
+ * @throws This system never throws; missing dependencies short-circuit the update.
+ * @example
+ * ```ts
+ * import { createMulberry32 } from '../../shared/random';
+ *
+ * playerMovementSystem(world, { delta: 16, frame: 1, rng: createMulberry32(0) });
+ * ```
  */
 export const playerMovementSystem: System = (world, context) => {
   const options = world.getResource(PLAYER_MOVEMENT_OPTIONS_KEY);
