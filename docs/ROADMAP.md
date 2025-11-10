@@ -4,16 +4,16 @@
 
 **Ziel:** Spielbarer Minimal-Run
 
-- [ ] Canvas-Setup mit integer scaling
-- [ ] Seeded RNG (mulberry32)
+- [x] Canvas-Setup mit integer scaling
+- [x] Seeded RNG (mulberry32)
 - [ ] Player-Sprite-Generator (16×16)
-- [ ] Simple Mapgen (Rooms & Corridors)
-- [ ] Gegner + AI-State "Chase"
+- [x] Simple Mapgen (Rooms & Corridors)
+- [x] Gegner + AI-State "Chase"
 - [ ] Kampf (Nah + Fern)
 - [ ] 6 Basis-SFX (Hit, Shoot, Death, Pickup, Step, UI)
 - [ ] 1 Musik-Loop (Seed-basiert)
 - [ ] HUD (HP, Keys, Coins, Floor) — styling groundwork captured in `docs/plans/hud-styling-plan.md`
-- [ ] Restart mit gleichem Seed
+- [x] Restart mit gleichem Seed
 
 ## 🌋 Phase 2: Content & Style (Monat 2)
 
