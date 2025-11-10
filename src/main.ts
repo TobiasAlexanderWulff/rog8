@@ -12,8 +12,9 @@ const ROOT_ID = 'app'; // TODO: Keep in sync with actual DOM root.
  * Generates the initial seed that drives deterministic game runs.
  *
  * @remarks
- * Uses the current timestamp masked to 32 bits so the seed remains within the range the
- * deterministic RNG expects.
+ * Pulls a 32-bit sample from the Web Crypto API so each run starts with a unique deterministic seed
+ * while staying within the range expected by the RNG subsystem. Falls back to a timestamp/XOR based
+ * mix when secure randomness is unavailable (e.g. older browsers).
  *
  * @returns Seed wrapper containing a 32-bit unsigned integer.
  * @throws This function never throws; it relies on synchronous bitwise operations.
@@ -23,9 +24,19 @@ const ROOT_ID = 'app'; // TODO: Keep in sync with actual DOM root.
  * console.log(seed.value);
  * ```
  */
-function createInitialSeed(): RunSeed {
-  // TODO: Generate a deterministic seed (random per run, surfaced in HUD).
-  return { value: Date.now() & 0xffffffff };
+export function createInitialSeed(): RunSeed {
+  const getRandomSeed = (): number => {
+    const cryptoApi = globalThis.crypto as Crypto | undefined;
+    if (cryptoApi?.getRandomValues) {
+      const sample = new Uint32Array(1);
+      cryptoApi.getRandomValues(sample);
+      return sample[0] >>> 0;
+    }
+    const fallback = (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
+    return fallback;
+  };
+
+  return { value: getRandomSeed() };
 }
 
 /**
@@ -88,4 +99,6 @@ function main(): void {
 }
 
 // TODO: Wire this to DOMContentLoaded or Vite entry once ready.
-main();
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  main();
+}
