@@ -12,7 +12,7 @@
 - [ ] Kampf (Nah + Fern)
 - [ ] 6 Basis-SFX (Hit, Shoot, Death, Pickup, Step, UI)
 - [ ] 1 Musik-Loop (Seed-basiert)
-- [ ] HUD (HP, Keys, Coins, Floor)
+- [ ] HUD (HP, Keys, Coins, Floor) — styling groundwork captured in `docs/plans/hud-styling-plan.md`
 - [ ] Restart mit gleichem Seed
 
 ## 🌋 Phase 2: Content & Style (Monat 2)
