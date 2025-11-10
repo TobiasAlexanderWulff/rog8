@@ -6,7 +6,7 @@ import { createHud, hideGameOver, showGameOver, type HudState } from './ui/hud';
 import { RunSeed } from './shared/random';
 import { syncHud } from './ui/hud-sync';
 
-const ROOT_ID = 'app'; // TODO: Keep in sync with actual DOM root.
+const ROOT_ID = 'app';
 
 /**
  * Generates the initial seed that drives deterministic game runs.
