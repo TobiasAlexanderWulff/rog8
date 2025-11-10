@@ -12,7 +12,6 @@ import type { ComponentKey, PlayerComponent, TransformComponent } from './engine
 import type { EnemyComponent } from './combat/enemy';
 import type { MapGrid } from './world/mapgen/simple';
 import type { RunBootstrapResult } from './world/run-setup';
-import { MAP_GRID_RESOURCE_KEY } from './world/run-setup';
 
 const ROOT_ID = 'app';
 const PLAYER_SPEED_TILES_PER_MS = 0.005;
@@ -30,8 +29,7 @@ const SCENE_COLORS = {
   enemy: '#f97316',
   bootText: '#94a3b8',
 };
-
-const MAP_GRID_RESOURCE_KEY_TYPED = MAP_GRID_RESOURCE_KEY as ResourceKey<MapGrid>;
+const MAP_GRID_RESOURCE_KEY = 'resource.map-grid' as ResourceKey<MapGrid>;
 
 /**
  * Generates the initial seed that drives deterministic game runs.
@@ -135,7 +133,7 @@ function createRunSynchronizer(
 }
 
 function renderGameScene(world: World, renderContext: RenderContext): void {
-  const map = world.getResource<MapGrid>(MAP_GRID_RESOURCE_KEY_TYPED);
+  const map = world.getResource<MapGrid>(MAP_GRID_RESOURCE_KEY);
   const { canvas, context } = renderContext;
   const width = canvas.width;
   const height = canvas.height;
