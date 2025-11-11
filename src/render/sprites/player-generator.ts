@@ -313,5 +313,20 @@ function paintSpriteBuffer(
     }
   }
 
+  mirrorColorBuffer(data, width, height);
   return { width, height, data };
+}
+
+function mirrorColorBuffer(data: Uint8ClampedArray, width: number, height: number): void {
+  const half = Math.floor(width / 2);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < half; x += 1) {
+      const leftIndex = (y * width + x) * 4;
+      const rightIndex = (y * width + (width - 1 - x)) * 4;
+      data[rightIndex] = data[leftIndex];
+      data[rightIndex + 1] = data[leftIndex + 1];
+      data[rightIndex + 2] = data[leftIndex + 2];
+      data[rightIndex + 3] = data[leftIndex + 3];
+    }
+  }
 }

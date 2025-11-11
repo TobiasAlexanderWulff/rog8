@@ -12,6 +12,11 @@ import type { ComponentKey, PlayerComponent, TransformComponent } from './engine
 import type { EnemyComponent } from './combat/enemy';
 import type { MapGrid } from './world/mapgen/simple';
 import type { RunBootstrapResult } from './world/run-setup';
+import {
+  generatePlayerSprite,
+  type PlayerSpriteAtlas,
+  type PlayerSpriteFrame,
+} from './render/sprites';
 
 const ROOT_ID = 'app';
 const PLAYER_SPEED_TILES_PER_MS = 0.005;
@@ -30,6 +35,8 @@ const SCENE_COLORS = {
   bootText: '#94a3b8',
 };
 const MAP_GRID_RESOURCE_KEY = 'resource.map-grid' as ResourceKey<MapGrid>;
+const PLAYER_SPRITE_RESOURCE_KEY = 'resource.player-sprite' as ResourceKey<PlayerSpriteAtlas>;
+const PLAYER_SPRITE_FRAME_CACHE = new WeakMap<PlayerSpriteFrame, HTMLCanvasElement>();
 
 /**
  * Generates the initial seed that drives deterministic game runs.
@@ -86,12 +93,14 @@ function bootstrapGame(rootId: string): GameBootstrapContext {
   const renderContext = bootstrapCanvas(rootId);
   const world = new World();
   const input = new InputManager();
+  registerPlayerSpriteResource(world, seed);
   const targetDeltaMs = 1000 / 60;
   const events: RunControllerEvents = {
     onGameOver(seedValue: RunSeed) {
       showGameOver(seedValue);
     },
     onRestart() {
+      registerPlayerSpriteResource(world, seed);
       hideGameOver();
     },
   };
@@ -134,6 +143,7 @@ function createRunSynchronizer(
 
 function renderGameScene(world: World, renderContext: RenderContext): void {
   const map = world.getResource<MapGrid>(MAP_GRID_RESOURCE_KEY);
+  const spriteAtlas = world.getResource<PlayerSpriteAtlas>(PLAYER_SPRITE_RESOURCE_KEY);
   const { canvas, context } = renderContext;
   const width = canvas.width;
   const height = canvas.height;
@@ -157,6 +167,10 @@ function renderGameScene(world: World, renderContext: RenderContext): void {
   const mapHeight = map.height * tileSize;
   const offsetX = Math.floor((width - mapWidth) / 2);
   const offsetY = Math.floor((height - mapHeight) / 2);
+  const playerSpriteFrame = selectPlayerSpriteFrame(spriteAtlas);
+  const playerSpriteCanvas = playerSpriteFrame
+    ? getSpriteFrameCanvas(playerSpriteFrame)
+    : undefined;
 
   for (let y = 0; y < map.height; y += 1) {
     for (let x = 0; x < map.width; x += 1) {
@@ -170,7 +184,7 @@ function renderGameScene(world: World, renderContext: RenderContext): void {
   const playerStore = world.getComponentStore(PLAYER_COMPONENT_KEY);
   const enemyStore = world.getComponentStore(ENEMY_COMPONENT_KEY);
 
-  const drawEntity = (entityId: number, color: string): void => {
+  const drawEntity = (entityId: number, color: string, spriteCanvas?: HTMLCanvasElement): void => {
     if (!transformStore) {
       return;
     }
@@ -181,13 +195,20 @@ function renderGameScene(world: World, renderContext: RenderContext): void {
     const px = offsetX + transform.x * tileSize;
     const py = offsetY + transform.y * tileSize;
     const size = Math.max(1, tileSize - 1);
+    if (spriteCanvas) {
+      const spriteSize = size;
+      const spriteOffsetX = px + Math.floor((tileSize - spriteSize) / 2);
+      const spriteOffsetY = py + Math.floor((tileSize - spriteSize) / 2);
+      context.drawImage(spriteCanvas, spriteOffsetX, spriteOffsetY, spriteSize, spriteSize);
+      return;
+    }
     context.fillStyle = color;
     context.fillRect(px, py, size, size);
   };
 
   if (playerStore) {
     for (const [entityId] of playerStore.entries()) {
-      drawEntity(entityId, SCENE_COLORS.player);
+      drawEntity(entityId, SCENE_COLORS.player, playerSpriteCanvas);
     }
   }
 
@@ -198,6 +219,48 @@ function renderGameScene(world: World, renderContext: RenderContext): void {
   }
 
   context.restore();
+}
+
+function registerPlayerSpriteResource(world: World, seed: RunSeed): PlayerSpriteAtlas {
+  const atlas = generatePlayerSprite(seed, { useFallbackOnError: true });
+  if (world.hasResource(PLAYER_SPRITE_RESOURCE_KEY)) {
+    world.removeResource(PLAYER_SPRITE_RESOURCE_KEY);
+  }
+  world.registerResource(PLAYER_SPRITE_RESOURCE_KEY, atlas);
+  return atlas;
+}
+
+function selectPlayerSpriteFrame(atlas?: PlayerSpriteAtlas): PlayerSpriteFrame | undefined {
+  if (!atlas || atlas.frames.length === 0) {
+    return undefined;
+  }
+  const idle = atlas.frames.find((frame) => frame.name === 'idle');
+  return idle ?? atlas.frames[0];
+}
+
+function getSpriteFrameCanvas(frame: PlayerSpriteFrame): HTMLCanvasElement | undefined {
+  const cached = PLAYER_SPRITE_FRAME_CACHE.get(frame);
+  if (cached) {
+    return cached;
+  }
+  if (typeof document === 'undefined') {
+    return undefined;
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = frame.buffer.width;
+  canvas.height = frame.buffer.height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    return undefined;
+  }
+  const image = new ImageData(
+    new Uint8ClampedArray(frame.buffer.data),
+    frame.buffer.width,
+    frame.buffer.height,
+  );
+  ctx.putImageData(image, 0, 0);
+  PLAYER_SPRITE_FRAME_CACHE.set(frame, canvas);
+  return canvas;
 }
 
 /**
