@@ -6,7 +6,7 @@
 
 - [x] Canvas-Setup mit integer scaling
 - [x] Seeded RNG (mulberry32)
-- [ ] Player-Sprite-Generator (16×16)
+- [ ] Player-Sprite-Generator (16×16) — siehe `docs/plans/player-sprite-generator-plan.md`
 - [x] Simple Mapgen (Rooms & Corridors)
 - [x] Gegner + AI-State "Chase"
 - [ ] Kampf (Nah + Fern)
