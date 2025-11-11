@@ -14,3 +14,4 @@ export type {
 export { DEV_SPRITE_ATLAS } from './fallback';
 export { persistSpriteAtlas, serializeSpriteAtlas } from './export';
 export { prepareSpriteFrames, drawSpriteFrame } from './draw';
+export { selectAnimatedFrame, getFrameDuration, DEFAULT_FRAME_DURATION_MS } from './animation';

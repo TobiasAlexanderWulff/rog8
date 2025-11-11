@@ -79,6 +79,7 @@ export interface PlayerSpriteMetadata {
 export interface PlayerSpriteFrame {
   name: string;
   buffer: SpriteBuffer;
+  durationMs?: number;
 }
 
 /**

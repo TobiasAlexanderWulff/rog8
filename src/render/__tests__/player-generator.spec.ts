@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
 
-import { generatePlayerSprite } from '../sprites';
+import { generatePlayerSprite, selectAnimatedFrame } from '../sprites';
 import type { PlayerSpriteFrame } from '../sprites';
 
 const hashFrame = (frame: PlayerSpriteFrame): string => {
@@ -32,11 +32,25 @@ describe('generatePlayerSprite', () => {
       },
       metadata: atlas.metadata,
       frameHash: hashFrame(frame),
+      frames: atlas.frames.map((entry) => ({
+        name: entry.name,
+        durationMs: entry.durationMs ?? undefined,
+      })),
     };
 
     expect(snapshot).toMatchInlineSnapshot(`
       {
         "frameHash": "1339ef26e97a4380b50a828a57baca67c8c25999d9c4f736dbb94abc2aec23db",
+        "frames": [
+          {
+            "durationMs": 250,
+            "name": "idle-0",
+          },
+          {
+            "durationMs": 250,
+            "name": "idle-1",
+          },
+        ],
         "metadata": {
           "features": {
             "accentBand": true,
@@ -63,6 +77,25 @@ describe('generatePlayerSprite', () => {
         },
       }
     `);
+  });
+
+  it('emits a two-frame idle cycle with deterministic timing', () => {
+    const atlas = generatePlayerSprite({ value: 2024 });
+    expect(atlas.frames).toHaveLength(2);
+    const hashes = atlas.frames.map((entry) => hashFrame(entry));
+    const uniqueHashes = new Set(hashes);
+    expect(uniqueHashes.size).toBeGreaterThan(1);
+
+    const frameSequence = [
+      selectAnimatedFrame(atlas, 0),
+      selectAnimatedFrame(atlas, 250),
+      selectAnimatedFrame(atlas, 499),
+      selectAnimatedFrame(atlas, 500),
+    ];
+    expect(frameSequence[0]?.name).toBe('idle-0');
+    expect(frameSequence[1]?.name).toBe('idle-1');
+    expect(frameSequence[2]?.name).toBe('idle-1');
+    expect(frameSequence[3]?.name).toBe('idle-0');
   });
 
   it('mirrors sprite pixels along the X axis', () => {

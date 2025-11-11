@@ -9,7 +9,7 @@
 ## Goals
 
 - Mirror the `docs/ROADMAP.md` entry **Player-Sprite-Generator (16×16)** with a concrete implementation outline.
-- Produce one idle frame at launch that can later expand to walk cycles without architectural changes.
+- Produce one idle frame at launch that can later expand to walk cycles without architectural changes. ✅ Idle two-frame pulse animation implemented; future work extends to movement cycles.
 - Support palette + trim variations derived from the run seed so rerolling seeds instantly showcases different looks.
 - Expose generator metadata (colors, symmetry flags, feature rolls) for HUD/debug overlays and tests.
 

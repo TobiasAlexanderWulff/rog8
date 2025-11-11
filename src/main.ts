@@ -17,6 +17,7 @@ import {
   type PlayerSpriteAtlas,
   type PlayerSpriteFrame,
   persistSpriteAtlas,
+  selectAnimatedFrame,
 } from './render/sprites';
 import { drawSpriteFrame, prepareSpriteFrames } from './render/sprites/draw';
 
@@ -142,7 +143,11 @@ function createRunSynchronizer(
   };
 }
 
-function renderGameScene(world: World, renderContext: RenderContext): void {
+function renderGameScene(
+  world: World,
+  renderContext: RenderContext,
+  animationElapsedMs: number,
+): void {
   const map = world.getResource<MapGrid>(MAP_GRID_RESOURCE_KEY);
   const spriteAtlas = world.getResource<PlayerSpriteAtlas>(PLAYER_SPRITE_RESOURCE_KEY);
   const { canvas, context } = renderContext;
@@ -168,7 +173,7 @@ function renderGameScene(world: World, renderContext: RenderContext): void {
   const mapHeight = map.height * tileSize;
   const offsetX = Math.floor((width - mapWidth) / 2);
   const offsetY = Math.floor((height - mapHeight) / 2);
-  const playerSpriteFrame = selectPlayerSpriteFrame(spriteAtlas);
+  const playerSpriteFrame = selectAnimatedFrame(spriteAtlas, animationElapsedMs) ?? undefined;
 
   for (let y = 0; y < map.height; y += 1) {
     for (let x = 0; x < map.width; x += 1) {
@@ -239,14 +244,6 @@ function registerPlayerSpriteResource(world: World, seed: RunSeed): PlayerSprite
   return atlas;
 }
 
-function selectPlayerSpriteFrame(atlas?: PlayerSpriteAtlas): PlayerSpriteFrame | undefined {
-  if (!atlas || atlas.frames.length === 0) {
-    return undefined;
-  }
-  const idle = atlas.frames.find((frame) => frame.name === 'idle');
-  return idle ?? atlas.frames[0];
-}
-
 /**
  * Entry point that wires together input, world, rendering, and HUD scaffolding.
  *
@@ -277,11 +274,13 @@ function main(): void {
   if (hudRoot) {
     hudState = createHud(hudRoot);
   }
+  let spriteAnimationElapsedMs = 0;
 
   const loop = createRenderLoop(renderContext, (_frame) => {
+    spriteAnimationElapsedMs += targetDeltaMs;
     syncRunState();
     controller.update(targetDeltaMs);
-    renderGameScene(world, renderContext);
+    renderGameScene(world, renderContext, spriteAnimationElapsedMs);
 
     if (hudState) {
       syncHud(world, hudState, seed);

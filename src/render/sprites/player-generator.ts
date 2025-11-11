@@ -7,10 +7,12 @@ import { DEV_SPRITE_ATLAS } from './fallback';
 import type {
   PlayerSpriteAtlas,
   PlayerSpriteFeatures,
+  PlayerSpriteFrame,
   PlayerSpriteMetadata,
   PlayerSpritePalette,
   SpriteBuffer,
 } from './types';
+import { DEFAULT_FRAME_DURATION_MS } from './animation';
 
 const SPRITE_WIDTH = 16;
 const SPRITE_HEIGHT = 16;
@@ -59,16 +61,12 @@ export function generatePlayerSprite(
       const masks = buildMasks(rng, width, height, features);
       const outlineMask = createOutlineMask(masks, width, height);
       const buffer = paintSpriteBuffer(width, height, palette, masks, outlineMask);
+      const frames = createIdleFrames(buffer, masks.highlight);
       const metadata = createMetadata(seed, width, height, palette, features);
       return {
         palette,
         metadata,
-        frames: [
-          {
-            name: 'idle',
-            buffer,
-          },
-        ],
+        frames,
       };
     });
   } catch (error) {
@@ -123,6 +121,46 @@ function createMetadata(
   };
 }
 
+function createIdleFrames(
+  baseBuffer: SpriteBuffer,
+  highlightMask: Uint8Array,
+): PlayerSpriteFrame[] {
+  const idleFrame: PlayerSpriteFrame = {
+    name: 'idle-0',
+    buffer: baseBuffer,
+    durationMs: DEFAULT_FRAME_DURATION_MS,
+  };
+  const pulseBuffer = createHighlightPulseFrame(baseBuffer, highlightMask);
+  const pulseFrame: PlayerSpriteFrame = {
+    name: 'idle-1',
+    buffer: pulseBuffer,
+    durationMs: DEFAULT_FRAME_DURATION_MS,
+  };
+  return [idleFrame, pulseFrame];
+}
+
+function createHighlightPulseFrame(
+  baseBuffer: SpriteBuffer,
+  highlightMask: Uint8Array,
+): SpriteBuffer {
+  const data = new Uint8ClampedArray(baseBuffer.data);
+  const pulseBuffer: SpriteBuffer = {
+    width: baseBuffer.width,
+    height: baseBuffer.height,
+    data,
+  };
+  const brighten = (value: number): number => clamp(Math.round(value + 35), 0, 255);
+  for (let i = 0; i < highlightMask.length; i += 1) {
+    if (!highlightMask[i]) {
+      continue;
+    }
+    const offset = i * 4;
+    data[offset] = brighten(data[offset]);
+    data[offset + 1] = brighten(data[offset + 1]);
+    data[offset + 2] = brighten(data[offset + 2]);
+  }
+  return pulseBuffer;
+}
 function buildBodyMask(rng: RNG, width: number, height: number): Uint8Array {
   const mask = new Uint8Array(width * height);
   const half = width / 2;
