@@ -37,6 +37,11 @@ const SCENE_COLORS = {
 const MAP_GRID_RESOURCE_KEY = 'resource.map-grid' as ResourceKey<MapGrid>;
 const PLAYER_SPRITE_RESOURCE_KEY = 'resource.player-sprite' as ResourceKey<PlayerSpriteAtlas>;
 const PLAYER_SPRITE_FRAME_CACHE = new WeakMap<PlayerSpriteFrame, HTMLCanvasElement>();
+const PLAYER_SPRITE_FRAME_BITMAPS = new WeakMap<PlayerSpriteFrame, ImageBitmap>();
+const PLAYER_SPRITE_FRAME_BITMAP_PROMISES = new WeakMap<
+  PlayerSpriteFrame,
+  Promise<ImageBitmap | undefined>
+>();
 
 /**
  * Generates the initial seed that drives deterministic game runs.
@@ -168,8 +173,8 @@ function renderGameScene(world: World, renderContext: RenderContext): void {
   const offsetX = Math.floor((width - mapWidth) / 2);
   const offsetY = Math.floor((height - mapHeight) / 2);
   const playerSpriteFrame = selectPlayerSpriteFrame(spriteAtlas);
-  const playerSpriteCanvas = playerSpriteFrame
-    ? getSpriteFrameCanvas(playerSpriteFrame)
+  const playerSpriteImage = playerSpriteFrame
+    ? getSpriteFrameImageSource(playerSpriteFrame)
     : undefined;
 
   for (let y = 0; y < map.height; y += 1) {
@@ -184,7 +189,7 @@ function renderGameScene(world: World, renderContext: RenderContext): void {
   const playerStore = world.getComponentStore(PLAYER_COMPONENT_KEY);
   const enemyStore = world.getComponentStore(ENEMY_COMPONENT_KEY);
 
-  const drawEntity = (entityId: number, color: string, spriteCanvas?: HTMLCanvasElement): void => {
+  const drawEntity = (entityId: number, color: string, sprite?: CanvasImageSource): void => {
     if (!transformStore) {
       return;
     }
@@ -195,11 +200,11 @@ function renderGameScene(world: World, renderContext: RenderContext): void {
     const px = offsetX + transform.x * tileSize;
     const py = offsetY + transform.y * tileSize;
     const size = Math.max(1, tileSize - 1);
-    if (spriteCanvas) {
+    if (sprite) {
       const spriteSize = size;
       const spriteOffsetX = px + Math.floor((tileSize - spriteSize) / 2);
       const spriteOffsetY = py + Math.floor((tileSize - spriteSize) / 2);
-      context.drawImage(spriteCanvas, spriteOffsetX, spriteOffsetY, spriteSize, spriteSize);
+      context.drawImage(sprite, spriteOffsetX, spriteOffsetY, spriteSize, spriteSize);
       return;
     }
     context.fillStyle = color;
@@ -208,7 +213,7 @@ function renderGameScene(world: World, renderContext: RenderContext): void {
 
   if (playerStore) {
     for (const [entityId] of playerStore.entries()) {
-      drawEntity(entityId, SCENE_COLORS.player, playerSpriteCanvas);
+      drawEntity(entityId, SCENE_COLORS.player, playerSpriteImage);
     }
   }
 
@@ -227,6 +232,7 @@ function registerPlayerSpriteResource(world: World, seed: RunSeed): PlayerSprite
     world.removeResource(PLAYER_SPRITE_RESOURCE_KEY);
   }
   world.registerResource(PLAYER_SPRITE_RESOURCE_KEY, atlas);
+  prepareSpriteFrameResources(atlas);
   return atlas;
 }
 
@@ -261,6 +267,59 @@ function getSpriteFrameCanvas(frame: PlayerSpriteFrame): HTMLCanvasElement | und
   ctx.putImageData(image, 0, 0);
   PLAYER_SPRITE_FRAME_CACHE.set(frame, canvas);
   return canvas;
+}
+
+function prepareSpriteFrameResources(atlas: PlayerSpriteAtlas): void {
+  for (const frame of atlas.frames) {
+    primeSpriteFrameBitmap(frame);
+    getSpriteFrameCanvas(frame);
+  }
+}
+
+function getSpriteFrameImageSource(frame: PlayerSpriteFrame): CanvasImageSource | undefined {
+  const bitmap = getSpriteFrameBitmap(frame);
+  if (bitmap) {
+    return bitmap;
+  }
+  return getSpriteFrameCanvas(frame);
+}
+
+function getSpriteFrameBitmap(frame: PlayerSpriteFrame): ImageBitmap | undefined {
+  const cached = PLAYER_SPRITE_FRAME_BITMAPS.get(frame);
+  if (cached) {
+    return cached;
+  }
+  primeSpriteFrameBitmap(frame);
+  return PLAYER_SPRITE_FRAME_BITMAPS.get(frame);
+}
+
+function primeSpriteFrameBitmap(frame: PlayerSpriteFrame): void {
+  if (
+    PLAYER_SPRITE_FRAME_BITMAPS.has(frame) ||
+    PLAYER_SPRITE_FRAME_BITMAP_PROMISES.has(frame) ||
+    typeof createImageBitmap !== 'function'
+  ) {
+    return;
+  }
+
+  const bitmapPromise = createImageBitmap(
+    new ImageData(
+      new Uint8ClampedArray(frame.buffer.data),
+      frame.buffer.width,
+      frame.buffer.height,
+    ),
+  )
+    .then((bitmap) => {
+      PLAYER_SPRITE_FRAME_BITMAP_PROMISES.delete(frame);
+      PLAYER_SPRITE_FRAME_BITMAPS.set(frame, bitmap);
+      return bitmap;
+    })
+    .catch(() => {
+      PLAYER_SPRITE_FRAME_BITMAP_PROMISES.delete(frame);
+      return undefined;
+    });
+
+  PLAYER_SPRITE_FRAME_BITMAP_PROMISES.set(frame, bitmapPromise);
 }
 
 /**
