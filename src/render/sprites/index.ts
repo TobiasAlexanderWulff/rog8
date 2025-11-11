@@ -13,3 +13,4 @@ export type {
 } from './types';
 export { DEV_SPRITE_ATLAS } from './fallback';
 export { persistSpriteAtlas, serializeSpriteAtlas } from './export';
+export { prepareSpriteFrames, drawSpriteFrame } from './draw';

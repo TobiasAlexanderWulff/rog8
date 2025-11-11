@@ -18,6 +18,7 @@ import {
   type PlayerSpriteFrame,
   persistSpriteAtlas,
 } from './render/sprites';
+import { drawSpriteFrame, prepareSpriteFrames } from './render/sprites/draw';
 
 const ROOT_ID = 'app';
 const PLAYER_SPEED_TILES_PER_MS = 0.005;
@@ -37,12 +38,6 @@ const SCENE_COLORS = {
 };
 const MAP_GRID_RESOURCE_KEY = 'resource.map-grid' as ResourceKey<MapGrid>;
 const PLAYER_SPRITE_RESOURCE_KEY = 'resource.player-sprite' as ResourceKey<PlayerSpriteAtlas>;
-const PLAYER_SPRITE_FRAME_CACHE = new WeakMap<PlayerSpriteFrame, HTMLCanvasElement>();
-const PLAYER_SPRITE_FRAME_BITMAPS = new WeakMap<PlayerSpriteFrame, ImageBitmap>();
-const PLAYER_SPRITE_FRAME_BITMAP_PROMISES = new WeakMap<
-  PlayerSpriteFrame,
-  Promise<ImageBitmap | undefined>
->();
 
 /**
  * Generates the initial seed that drives deterministic game runs.
@@ -174,9 +169,6 @@ function renderGameScene(world: World, renderContext: RenderContext): void {
   const offsetX = Math.floor((width - mapWidth) / 2);
   const offsetY = Math.floor((height - mapHeight) / 2);
   const playerSpriteFrame = selectPlayerSpriteFrame(spriteAtlas);
-  const playerSpriteImage = playerSpriteFrame
-    ? getSpriteFrameImageSource(playerSpriteFrame)
-    : undefined;
 
   for (let y = 0; y < map.height; y += 1) {
     for (let x = 0; x < map.width; x += 1) {
@@ -190,7 +182,7 @@ function renderGameScene(world: World, renderContext: RenderContext): void {
   const playerStore = world.getComponentStore(PLAYER_COMPONENT_KEY);
   const enemyStore = world.getComponentStore(ENEMY_COMPONENT_KEY);
 
-  const drawEntity = (entityId: number, color: string, sprite?: CanvasImageSource): void => {
+  const drawEntity = (entityId: number, color: string, spriteFrame?: PlayerSpriteFrame): void => {
     if (!transformStore) {
       return;
     }
@@ -201,12 +193,21 @@ function renderGameScene(world: World, renderContext: RenderContext): void {
     const px = offsetX + transform.x * tileSize;
     const py = offsetY + transform.y * tileSize;
     const size = Math.max(1, tileSize - 1);
-    if (sprite) {
+    if (spriteFrame) {
       const spriteSize = size;
       const spriteOffsetX = px + Math.floor((tileSize - spriteSize) / 2);
       const spriteOffsetY = py + Math.floor((tileSize - spriteSize) / 2);
-      context.drawImage(sprite, spriteOffsetX, spriteOffsetY, spriteSize, spriteSize);
-      return;
+      const rendered = drawSpriteFrame(
+        context,
+        spriteFrame,
+        spriteOffsetX,
+        spriteOffsetY,
+        spriteSize,
+        spriteSize,
+      );
+      if (rendered) {
+        return;
+      }
     }
     context.fillStyle = color;
     context.fillRect(px, py, size, size);
@@ -214,7 +215,7 @@ function renderGameScene(world: World, renderContext: RenderContext): void {
 
   if (playerStore) {
     for (const [entityId] of playerStore.entries()) {
-      drawEntity(entityId, SCENE_COLORS.player, playerSpriteImage);
+      drawEntity(entityId, SCENE_COLORS.player, playerSpriteFrame);
     }
   }
 
@@ -234,7 +235,7 @@ function registerPlayerSpriteResource(world: World, seed: RunSeed): PlayerSprite
     world.removeResource(PLAYER_SPRITE_RESOURCE_KEY);
   }
   world.registerResource(PLAYER_SPRITE_RESOURCE_KEY, atlas);
-  prepareSpriteFrameResources(atlas);
+  prepareSpriteFrames(atlas);
   return atlas;
 }
 
@@ -244,84 +245,6 @@ function selectPlayerSpriteFrame(atlas?: PlayerSpriteAtlas): PlayerSpriteFrame |
   }
   const idle = atlas.frames.find((frame) => frame.name === 'idle');
   return idle ?? atlas.frames[0];
-}
-
-function getSpriteFrameCanvas(frame: PlayerSpriteFrame): HTMLCanvasElement | undefined {
-  const cached = PLAYER_SPRITE_FRAME_CACHE.get(frame);
-  if (cached) {
-    return cached;
-  }
-  if (typeof document === 'undefined') {
-    return undefined;
-  }
-  const canvas = document.createElement('canvas');
-  canvas.width = frame.buffer.width;
-  canvas.height = frame.buffer.height;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    return undefined;
-  }
-  const image = new ImageData(
-    new Uint8ClampedArray(frame.buffer.data),
-    frame.buffer.width,
-    frame.buffer.height,
-  );
-  ctx.putImageData(image, 0, 0);
-  PLAYER_SPRITE_FRAME_CACHE.set(frame, canvas);
-  return canvas;
-}
-
-function prepareSpriteFrameResources(atlas: PlayerSpriteAtlas): void {
-  for (const frame of atlas.frames) {
-    primeSpriteFrameBitmap(frame);
-    getSpriteFrameCanvas(frame);
-  }
-}
-
-function getSpriteFrameImageSource(frame: PlayerSpriteFrame): CanvasImageSource | undefined {
-  const bitmap = getSpriteFrameBitmap(frame);
-  if (bitmap) {
-    return bitmap;
-  }
-  return getSpriteFrameCanvas(frame);
-}
-
-function getSpriteFrameBitmap(frame: PlayerSpriteFrame): ImageBitmap | undefined {
-  const cached = PLAYER_SPRITE_FRAME_BITMAPS.get(frame);
-  if (cached) {
-    return cached;
-  }
-  primeSpriteFrameBitmap(frame);
-  return PLAYER_SPRITE_FRAME_BITMAPS.get(frame);
-}
-
-function primeSpriteFrameBitmap(frame: PlayerSpriteFrame): void {
-  if (
-    PLAYER_SPRITE_FRAME_BITMAPS.has(frame) ||
-    PLAYER_SPRITE_FRAME_BITMAP_PROMISES.has(frame) ||
-    typeof createImageBitmap !== 'function'
-  ) {
-    return;
-  }
-
-  const bitmapPromise = createImageBitmap(
-    new ImageData(
-      new Uint8ClampedArray(frame.buffer.data),
-      frame.buffer.width,
-      frame.buffer.height,
-    ),
-  )
-    .then((bitmap) => {
-      PLAYER_SPRITE_FRAME_BITMAP_PROMISES.delete(frame);
-      PLAYER_SPRITE_FRAME_BITMAPS.set(frame, bitmap);
-      return bitmap;
-    })
-    .catch(() => {
-      PLAYER_SPRITE_FRAME_BITMAP_PROMISES.delete(frame);
-      return undefined;
-    });
-
-  PLAYER_SPRITE_FRAME_BITMAP_PROMISES.set(frame, bitmapPromise);
 }
 
 /**
