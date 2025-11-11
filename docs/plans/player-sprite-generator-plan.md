@@ -60,8 +60,8 @@
 
 1. **World Bootstrap:** During `RunController` startup (post-mapgen), call `generatePlayerSprite(seed)` and stash the result as a world resource (e.g., `resource.player-sprite`).
 2. **Renderer:** Update `renderGameScene` to draw the sprite's `ImageBitmap` instead of rectangles, scaling via the already-computed tile size and `context.imageSmoothingEnabled=false`.
-3. **HUD/Debug:** Surface palette metadata (hex strings) and sprite ID for quick verification in the HUD seed readout.
-4. **Persistence Toggle:** When `import.meta.env.DEV && process.env.EXPORT_SPRITES === 'true'`, call `persistSpriteAtlas` so dev builds can inspect outputs; production skips file writes.
+3. **HUD/Debug:** Surface palette metadata (hex strings) and sprite ID for quick verification in the HUD seed readout. ✅ Implemented via `src/ui/hud.ts` + `hud-sync` (palette chips + feature list).
+4. **Persistence Toggle:** When `import.meta.env.DEV && import.meta.env.VITE_EXPORT_SPRITES === 'true'`, call `persistSpriteAtlas` so dev builds can inspect outputs; production skips file writes. ✅ Wired through `registerPlayerSpriteResource`.
 
 ## Testing & Validation
 

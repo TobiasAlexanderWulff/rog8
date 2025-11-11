@@ -16,6 +16,7 @@ import {
   generatePlayerSprite,
   type PlayerSpriteAtlas,
   type PlayerSpriteFrame,
+  persistSpriteAtlas,
 } from './render/sprites';
 
 const ROOT_ID = 'app';
@@ -228,6 +229,7 @@ function renderGameScene(world: World, renderContext: RenderContext): void {
 
 function registerPlayerSpriteResource(world: World, seed: RunSeed): PlayerSpriteAtlas {
   const atlas = generatePlayerSprite(seed, { useFallbackOnError: true });
+  persistSpriteAtlas(seed, atlas);
   if (world.hasResource(PLAYER_SPRITE_RESOURCE_KEY)) {
     world.removeResource(PLAYER_SPRITE_RESOURCE_KEY);
   }

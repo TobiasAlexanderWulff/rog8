@@ -9,6 +9,10 @@ const isDevBuild =
   typeof import.meta !== 'undefined' && typeof import.meta.env !== 'undefined'
     ? import.meta.env.DEV
     : false;
+const exportSpritesFlag =
+  typeof import.meta !== 'undefined' && typeof import.meta.env !== 'undefined'
+    ? import.meta.env.VITE_EXPORT_SPRITES === 'true'
+    : false;
 
 /**
  * Serializes the atlas into a JSON-friendly payload.
@@ -34,7 +38,7 @@ export function serializeSpriteAtlas(atlas: PlayerSpriteAtlas): PlayerSpriteExpo
  * @param atlas - Generated atlas to persist.
  */
 export function persistSpriteAtlas(seed: RunSeed, atlas: PlayerSpriteAtlas): void {
-  if (!isBrowser || !isDevBuild) {
+  if (!isBrowser || !isDevBuild || !exportSpritesFlag) {
     return;
   }
 
