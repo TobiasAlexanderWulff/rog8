@@ -1,3 +1,4 @@
+import './hud.css';
 import type { RunSeed } from '../shared/random';
 
 /**
