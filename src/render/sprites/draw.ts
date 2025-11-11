@@ -10,6 +10,10 @@ const FRAME_BITMAP_PROMISES = new WeakMap<PlayerSpriteFrame, Promise<ImageBitmap
 /**
  * Ensures sprite frames have warmed caches (canvas + bitmap) before rendering.
  *
+ * @remarks
+ * Call this immediately after a sprite atlas is generated so future draw calls
+ * can reuse pre-initialized canvases/bitmaps without stalling the render loop.
+ *
  * @param atlas - Player sprite atlas containing the frames to prepare.
  */
 export function prepareSpriteFrames(atlas: PlayerSpriteAtlas): void {
