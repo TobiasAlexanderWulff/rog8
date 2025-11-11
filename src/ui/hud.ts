@@ -16,6 +16,15 @@ import type { RunSeed } from '../shared/random';
 export interface HudState {
   health: { current: number; max: number };
   seed: RunSeed;
+  sprite: {
+    palette: {
+      base: string;
+      trim: string;
+      highlight: string;
+      outline: string;
+    };
+    features: string[];
+  };
   // TODO: Extend with key/coin/floor counters in Milestone B.
 }
 
@@ -68,7 +77,42 @@ export function createHud(root: HTMLElement): HudState {
 
   seedRow.append(seedLabel, seedValue);
 
-  overlay.append(healthRow, seedRow);
+  const paletteRow = document.createElement('div');
+  paletteRow.className = 'hud-row hud-row--palette';
+
+  const paletteLabel = document.createElement('span');
+  paletteLabel.className = 'hud-label';
+  paletteLabel.textContent = 'Palette';
+
+  const paletteContainer = document.createElement('div');
+  paletteContainer.className = 'hud-palette';
+  paletteContainer.dataset.hudPalette = 'true';
+
+  for (const slot of ['base', 'trim', 'highlight', 'outline'] as const) {
+    const chip = document.createElement('span');
+    chip.className = `hud-palette__chip hud-palette__chip--${slot}`;
+    chip.dataset.hudPaletteColor = slot;
+    chip.textContent = '—';
+    paletteContainer.appendChild(chip);
+  }
+
+  paletteRow.append(paletteLabel, paletteContainer);
+
+  const spriteRow = document.createElement('div');
+  spriteRow.className = 'hud-row hud-row--sprite';
+
+  const spriteLabel = document.createElement('span');
+  spriteLabel.className = 'hud-label';
+  spriteLabel.textContent = 'Sprite';
+
+  const spriteValue = document.createElement('span');
+  spriteValue.className = 'hud-value';
+  spriteValue.dataset.hudSpriteFeatures = 'true';
+  spriteValue.textContent = '—';
+
+  spriteRow.append(spriteLabel, spriteValue);
+
+  overlay.append(healthRow, seedRow, paletteRow, spriteRow);
 
   root.replaceChildren(overlay);
   root.setAttribute('data-hud-ready', 'true');
@@ -76,6 +120,15 @@ export function createHud(root: HTMLElement): HudState {
   return {
     health: { current: 0, max: 0 },
     seed: { value: 0 },
+    sprite: {
+      palette: {
+        base: '#000000',
+        trim: '#000000',
+        highlight: '#000000',
+        outline: '#000000',
+      },
+      features: [],
+    },
   };
 }
 
@@ -113,6 +166,32 @@ export function updateHud(state: HudState): void {
     const nextValue = `${state.seed.value}`;
     if (seedValue.textContent !== nextValue) {
       seedValue.textContent = nextValue;
+    }
+  }
+
+  const paletteContainer = overlay.querySelector<HTMLElement>('[data-hud-palette="true"]');
+  if (paletteContainer) {
+    for (const slot of ['base', 'trim', 'highlight', 'outline'] as const) {
+      const chip = paletteContainer.querySelector<HTMLElement>(
+        `[data-hud-palette-color="${slot}"]`,
+      );
+      if (!chip) {
+        continue;
+      }
+      const nextValue = state.sprite.palette[slot];
+      const normalized = nextValue.toLowerCase();
+      if (chip.textContent !== normalized) {
+        chip.textContent = normalized;
+      }
+      chip.style.backgroundColor = nextValue;
+    }
+  }
+
+  const featureValue = overlay.querySelector<HTMLElement>('[data-hud-sprite-features="true"]');
+  if (featureValue) {
+    const nextValue = state.sprite.features.length > 0 ? state.sprite.features.join(', ') : '—';
+    if (featureValue.textContent !== nextValue) {
+      featureValue.textContent = nextValue;
     }
   }
 }

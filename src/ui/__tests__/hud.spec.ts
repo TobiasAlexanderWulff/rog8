@@ -44,6 +44,15 @@ describe('createHud', () => {
     expect(state).toStrictEqual({
       health: { current: 0, max: 0 },
       seed: { value: 0 },
+      sprite: {
+        palette: {
+          base: '#000000',
+          trim: '#000000',
+          highlight: '#000000',
+          outline: '#000000',
+        },
+        features: [],
+      },
     });
 
     expect(root.dataset.hudReady).toBe('true');
@@ -57,9 +66,9 @@ describe('createHud', () => {
     expect(overlay.className).toBe('hud-overlay');
 
     const rows = Array.from(overlay.children) as HTMLElement[];
-    expect(rows).toHaveLength(2);
+    expect(rows).toHaveLength(4);
 
-    const [healthRow, seedRow] = rows;
+    const [healthRow, seedRow, paletteRow, spriteRow] = rows;
     expect(healthRow.className).toBe('hud-row hud-row--status');
     const healthLabel = healthRow.querySelector('.hud-label');
     expect(healthLabel?.textContent).toBe('HP');
@@ -73,6 +82,18 @@ describe('createHud', () => {
     const seedValue = seedRow.querySelector<HTMLElement>('[data-hud-seed="true"]');
     expect(seedValue?.textContent).toBe('0');
     expect(seedValue?.dataset.hudSeed).toBe('true');
+
+    expect(paletteRow.className).toBe('hud-row hud-row--palette');
+    const paletteLabel = paletteRow.querySelector('.hud-label');
+    expect(paletteLabel?.textContent).toBe('Palette');
+    const paletteContainer = paletteRow.querySelector<HTMLElement>('[data-hud-palette="true"]');
+    expect(paletteContainer?.children).toHaveLength(4);
+
+    expect(spriteRow.className).toBe('hud-row hud-row--sprite');
+    const spriteLabel = spriteRow.querySelector('.hud-label');
+    expect(spriteLabel?.textContent).toBe('Sprite');
+    const spriteValue = spriteRow.querySelector<HTMLElement>('[data-hud-sprite-features="true"]');
+    expect(spriteValue?.textContent).toBe('—');
   });
 });
 
@@ -92,10 +113,32 @@ describe('updateHud', () => {
     updateHud({
       health: { current: 12, max: 34 },
       seed: { value: 98765 },
+      sprite: {
+        palette: {
+          base: '#123456',
+          trim: '#654321',
+          highlight: '#abcdef',
+          outline: '#fedcba',
+        },
+        features: ['visor:mono', 'antenna'],
+      },
     });
 
     expect(healthValue?.textContent).toBe('12 / 34');
     expect(seedValue?.textContent).toBe('98765');
+
+    const paletteChips = root.querySelectorAll<HTMLElement>(
+      '[data-hud-palette="true"] [data-hud-palette-color]',
+    );
+    expect(paletteChips).toHaveLength(4);
+    expect(Array.from(paletteChips).map((chip) => chip.textContent)).toEqual([
+      '#123456',
+      '#654321',
+      '#abcdef',
+      '#fedcba',
+    ]);
+    const spriteValue = root.querySelector<HTMLElement>('[data-hud-sprite-features="true"]');
+    expect(spriteValue?.textContent).toBe('visor:mono, antenna');
   });
 });
 
@@ -150,6 +193,6 @@ describe('hideGameOver', () => {
 
     container = overlay?.querySelector<HTMLElement>('[data-hud-game-over="true"]');
     expect(container).toBeNull();
-    expect(overlay?.childElementCount).toBe(2);
+    expect(overlay?.childElementCount).toBe(4);
   });
 });

@@ -1,7 +1,8 @@
 import type { RunSeed } from '../shared/random';
 import { updateHud, type HudState } from './hud';
-import type { World } from '../engine/world';
+import type { ResourceKey, World } from '../engine/world';
 import type { ComponentKey, HealthComponent, PlayerComponent } from '../engine/components';
+import type { PlayerSpriteAtlas } from '../render/sprites';
 
 /**
  * Component key used to reference the player marker within the ECS world.
@@ -18,6 +19,7 @@ export const PLAYER_COMPONENT_KEY = 'component.player' as ComponentKey<PlayerCom
  * Shared with bootstrap routines so HUD synchronisation can converge on a consistent component id.
  */
 export const HEALTH_COMPONENT_KEY = 'component.health' as ComponentKey<HealthComponent>;
+const PLAYER_SPRITE_RESOURCE_KEY = 'resource.player-sprite' as ResourceKey<PlayerSpriteAtlas>;
 
 /**
  * Retrieves the player's health component from the ECS world.
@@ -79,6 +81,40 @@ export function syncHud(world: World, hudState: HudState, seed: RunSeed): boolea
     hudState.health.current = playerHealth.current;
     hudState.health.max = playerHealth.max;
   }
+  const spriteAtlas = world.getResource(PLAYER_SPRITE_RESOURCE_KEY);
+  updateSpriteHudState(hudState, spriteAtlas);
   updateHud(hudState);
   return playerHealth?.current === 0;
+}
+
+function updateSpriteHudState(hudState: HudState, atlas: PlayerSpriteAtlas | undefined): void {
+  const normalize = (hex: string): string => hex.toLowerCase();
+  if (!atlas) {
+    hudState.sprite.palette.base = '#000000';
+    hudState.sprite.palette.trim = '#000000';
+    hudState.sprite.palette.highlight = '#000000';
+    hudState.sprite.palette.outline = '#000000';
+    hudState.sprite.features = [];
+    return;
+  }
+  hudState.sprite.palette.base = normalize(atlas.palette.base.hex);
+  hudState.sprite.palette.trim = normalize(atlas.palette.trim.hex);
+  hudState.sprite.palette.highlight = normalize(atlas.palette.highlight.hex);
+  hudState.sprite.palette.outline = normalize(atlas.palette.outline.hex);
+  hudState.sprite.features = describeSpriteFeatures(atlas);
+}
+
+function describeSpriteFeatures(atlas: PlayerSpriteAtlas): string[] {
+  const features: string[] = [];
+  features.push(`visor:${atlas.metadata.features.visorStyle}`);
+  if (atlas.metadata.features.hasAntenna) {
+    features.push('antenna');
+  }
+  if (atlas.metadata.features.hasBackpack) {
+    features.push('backpack');
+  }
+  if (atlas.metadata.features.accentBand) {
+    features.push('accent');
+  }
+  return features;
 }

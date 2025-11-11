@@ -22,6 +22,15 @@ function createHudState(): HudState {
   return {
     health: { current: 0, max: 0 },
     seed: { value: 0 },
+    sprite: {
+      palette: {
+        base: '#000000',
+        trim: '#000000',
+        highlight: '#000000',
+        outline: '#000000',
+      },
+      features: [],
+    },
   };
 }
 
